@@ -1,0 +1,7 @@
+/ ZMS MACRO FILE < MODULE ID >
+
+.define	[MT32]	{[INSTRUMENT_ID $41,$10,$16]}
+.define	[CM64]	{[INSTRUMENT_ID $41,$10,$16]}
+
+.define	[SC55]	{[INSTRUMENT_ID $41,$10,$42]}
+.define	[SC88]	{[INSTRUMENT_ID $41,$10,$42]}

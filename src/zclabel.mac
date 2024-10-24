@@ -1,0 +1,140 @@
+*-----------------------------------------------------------------------------
+	.offset	0
+tit_trno:	ds.w	1	*トラック情報テーブル
+tit_next:	ds.l	1
+tit_stat_mode:	ds.l	1
+tit_type_ch:	ds.l	1
+tit_cmt_len:	ds.l	1
+tit_comment:	ds.l	0
+*-----------------------------------------------------------------------------
+	.offset	0
+ptn_offset:	ds.l	1	*パターントラック管理テーブル
+ptn_strlen:	ds.b	1
+ptn_name:	ds.b	0
+*-----------------------------------------------------------------------------
+*コンパイル時のワークエリア
+	.offset	0
+tpt_trkno:		ds.l	1	*トラック番号情報がヘッダとして添付されている
+tpt_addr:		ds.l	1	*アドレス
+tpt_size:		ds.l	1	*サイズ
+tpt_now:		ds.l	1	*次回書き込むオフセットアドレス
+tpt_trkvol:		ds.w	1	*トラックボリューム(0-[128])
+tpt_trkfrq:		ds.w	1	*トラック精度[0]
+tpt_note_len:		ds.w	1	*デフォルト音長(0-32767)[master_clock/4]
+tpt_gate_time:		ds.w	1	*ゲートタイム[8,16,32,64,128]
+tpt_octave:		ds.b	1	*オクターブ値[5]
+tpt_last_velo:		ds.b	1	*前回指定されたベロシティ[127]
+tpt_rltv_velo:		ds.b	1	*相対ベロシティ値ワーク[1]
+tpt_rltv_vol:		ds.b	1	*相対ボリューム値ワーク[1]
+tpt_port_dly:		ds.w	1	*ポルタメント用ディレイ[0]
+tpt_port_hold:		ds.w	1	*ポルタメント用ホールドタイム[0]
+tpt_key_sig:		ds.b	7	*調号[0]
+			ds.b	1	*dummy
+
+tpt_rept_addr:		ds.l	1	*繰り返し関係ワーク
+r_rept_addr:		equ	0	*.l repeat開始offset addr(l)
+r_rept_flag:		equ	4	*.w |nの設定が行われたか[0]
+r_rept_work:		equ	6	*.w |:に対応する:|がいくつ有るべきか[1]
+r_reserved:		equ	8	*.w
+r_rept_cnt:		equ	10	*.w |:～:|の繰り返し回数[n]
+r_rept_exit:		equ	12	*.l |n→:|までのオフセットをどこへ格納すべきか
+rept_wksz:		equ	16
+tpt_rept_max:		ds.l	1	*リピートワークのリミット[0]
+tpt_rept_n:		ds.l	1	*リピートワークのポイント(0,16,32,...)
+
+tpt_sgcd_addr:		ds.l	1	*反復記号処理関係ワーク
+s_sgcd_id:		equ	0	*.l segno:0  coda:1
+s_sgcd_no:		equ	4	*.l 0～
+s_sgcd_addr:		equ	8	*.l segno/codaの存在するoffset addr(l)
+s_reserved1:		equ	12	*.l
+sgcd_wksz:		equ	16
+tpt_sgcd_max:		ds.l	1	*反復記号処理ワークのリミット[0]
+tpt_sgcd_n:		ds.l	1	*反復記号処理ワークのポイント
+
+tpt_fgmap_addr:		ds.l	1	*[loop]処理時に初期化するワークのマップ
+tpt_fgmap_max:		ds.l	1	*[loop]処理時に初期化するワークのリミット[0]
+tpt_fgmap_n:		ds.l	1	*[loop]処理時に初期化するワークのポイント
+
+tpt_mode_flg:		ds.l	1	*.l フラグワーク[0]
+c_vseq:			equ	0	*d0 ﾍﾞﾛｼﾃｨｼｰｹﾝｽｽｲｯﾁ([0]=off/1=on)
+c_@q:			equ	1	*d1 @Qのモード([0]=normal,1=fixed gate time)
+c_q_sgn:		equ	2	*d2 Q/@Qの符号([0]=plus,1=minus)
+c_break:		equ	3	*d3 コンパイル中断フラグ([0]=NORMAL,1=BREAK)
+c_renp1:		equ	4	*d4 連符処理(PASS1)実行中かどうか[0]
+c_renp2:		equ	5	*d5 連符処理(PASS2)実行中かどうか[0]
+c_gate:			equ	6	*d6 ゲートタイムを取得したか[0]
+c_step:			equ	7	*d7 ステップタイムを取得したか[0]
+
+c_vseq_chd:		equ	0	*d8 和音ﾍﾞﾛｼﾃｨｼｰｹﾝｽｽｲｯﾁ([0]=off/1=on)
+
+tpt_renp_addr:		ds.l	1	*
+tpt_renp_cnt:		ds.l	1	*連符ワーク(音符数カウント)[0]
+*tpt_renp_origa4:			*連符終了(PASS2)ソース絶対アドレス
+tpt_renp_starta4:	ds.l	1	*連符開始(PASS1)ソース絶対アドレス
+*tpt_renp_orignow:			*連符終了(PASS2)オフセット→tpt_now
+*tpt_renp_startnow:	ds.l	1	*連符開始(PASS1)オフセット→tpt_now
+tpt_renp_surplus	ds.w	1	*余り
+tpt_renp_length		ds.w	1	*連符絶対音長
+
+tpt_ptn_work:		ds.l	1	*パターントラック用ワーク
+
+tpt_chord_dly:		ds.w	1	*和音ディレイ[0]
+tpt_echo_dly:		ds.w	1	*疑似エコー間隔時間[0]	1～65535:ディレイ
+tpt_echo_loop:		ds.w	1	*疑似エコーループ回数[0]:∞   1～65535:ループ回数
+tpt_echo_switch:	ds.b	1	*疑似エコースイッチ
+tpt_echo_vdec:		ds.b	1	*疑似エコー音量／ベロシティ増減衰量[1]
+tpt_velo_n:		ds.w	1	*ベロシティ・シーケンス用ポインタ[0]
+tpt_n_of_velo:		ds.w	1	*ベロシティ・シーケンス要素数[0]
+tpt_velo_n_chd:		ds.w	1	*和音ベロシティ・シーケンス用ポインタ[0]
+tpt_n_of_velo_chd:	ds.w	1	*和音ベロシティ・シーケンス要素数[0]
+tpt_velo_chd:	ds.b	max_note_on	*和音ベロシティ・シーケンス用ワーク(0-127,$80,$81～$ff)
+tpt_velo:	ds.b	velo_max	*ベロシティ・シーケンス用ワーク
+tpt_note_buf:		ds.l	(max_note_on)*2+1 *flag(.b),note(.b),gate(.w),offset(.l)
+tnb_flag:	equ	0
+tnb_note:	equ	1	*-1でendcode
+tnb_gate:	equ	2
+tnb_offset:	equ	4
+tpt_note_tbl:		ds.b	128
+tpt_tsize:				*トラックバッファ管理テーブルの1要素のサイズ
+*-----------------------------------------------------------------------------
+ta_type:	equ	0	*0:MML系,1:CTRL系
+ta_offset:	equ	4	*書き換えオフセット
+ta_tpt_n:	equ	8	*tpt_Xのオフセットアドレス(type=1では未使用)
+ta_trk_n:	equ	12	*コンパイル時のトラック番号
+ta_size:	equ	16
+*-----------------------------------------------------------------------------
+*CALC_TOTALの戻り値構造
+*a0.lで示される領域は以下のような構成をとる
+*TOTAL STEPTIME(.L),		グローバルリザルト群
+*TOTAL CHECKSUM(.L),
+*予想演奏時間(.L),		$00HHMMSS
+*RESERVED(.L),
+*RESERVED(.L),
+*RESERVED(.L),
+*RESERVED(.L),
+*RESERVED(.L),
+*TRACK1の情報までのOFFSET(.L),
+*TRACK2の情報までのOFFSET(.L),
+*	:
+*TRACKnの情報までのOFFSET(.L),
+*-1.(W)					endcode
+*TRACK1の情報
+*TRACK2の情報
+*	:
+*	:
+*TRACKxの情報構成
+clc_total0:		equ	0	*.L 総ステップタイム(ループ外)
+clc_total1:		equ	4	*.L 総ステップタイム(ループ内)
+clc_checksum:		equ	8	*.L 総チェックサム
+clc_measure:		equ	12	*.L 総小節数
+clc_ttlrsltsz:		equ	16
+clc_ms_total:		equ	0	*.L 第1小節の総ステップタイム
+clc_dummy:		equ	4	*.W RESERVED
+clc_ms_checksum:	equ	6	*.W 第1小節のチェックサム
+*-----------------------------------------------------------------------------
+*MML = の対応ビット
+sw_vseq:	equ	4
+sw_aftc:	equ	3
+sw_bend:	equ	2
+sw_arcc0:	equ	1
+sw_pmod:	equ	0

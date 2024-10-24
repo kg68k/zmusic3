@@ -1,0 +1,958 @@
+ZM_INIT:	equ	$00		*イニシャライズ
+	*   cmd=$00
+	* < d1.l=0	(dummy)
+	* > d0.l=Version ID
+	*	バージョンIDはたとえばバージョン3.21ならば $00003241となる。
+	*	4の部分は固定値。
+
+ZM_ASSIGN:	equ	$01		*チャンネルアサイン
+	*   cmd=$01
+	* < d1.l=ch_number
+	* < 	  .hw=type	(0,1,$8000,$8001,$8002,-1:current)
+	* < 	  .lw=ch	(0-15)
+	* < d2.l=trk_number(0-65534)
+	* > error code
+
+ZM_COMPILER:	equ	$02		*コンパイル(外部組み込み)
+	*   cmd=$02
+	* < d1.l=mode
+	*	d0-d6:検出するエラーの最大/0:∞,1-127
+	*	d15:エラーテーブルリストを作成して出力するか(0:no,1:yes)
+	* < d2.l=size
+	* < a1.l=source address	(a1=d2=0でコンパイラ解除)
+	*-------
+	* > d0.l=num. of error
+	* > a0.l=error table (if required/to be free)
+	*	(error code.w,error line.l)
+	*-------
+	* > d0.l=0:no error
+	* > a0.l=object address
+	*   0(a0)～15(a0)=ZMD standard header
+	*   8(a0)～ZMD
+	*   (ウォーニングがあればZMDデータの後ろにくっついている)
+	*------- release compiler case
+	* > d0.l=0:no error/nz error
+
+ZM_VGET:		equ	$03		*音色取りだし
+	*   cmd=$03
+	* < d1.l=timbre number(0-32767)
+	* < d2.l=mode(0:normal,1:AL/FB)
+	* < a1.l=destination data address(80bytes)
+
+ZM_VSET:		equ	$04		*音色登録
+	*   cmd=$04
+	* < d1.l=timbre number(0-32767)
+	* < d2.l=mode(0:normal,1:AL/FB,-1:ZMD形式)
+	* < a1.l=parameters' data address
+
+ZM_TEMPO:	equ	$06		*テンポセット
+	*   cmd=$06
+	* < d1.lw=tempo value(Timer A:77～32767,Timer B:20～5000,YM3802:1～32767
+	*		      -1:で現在のテンポ取得)
+	* < d1.hw=設定モード(-1:でZMUSICのワークに反映しない,0:反映する)
+	* > d0.hw=timer value
+	* > d0.lw=tempo value
+
+ZM_SET_TIMER_VALUE:	equ	$07	*タイマーの値を設定する
+	*   cmd=$07
+	* < d1.lw=timer value(Timer A:0～1023,Timer B:0～255,YM3802:0～8191)
+	*		      -1:で現在のタイマ値取得)
+	* < d1.hw=設定モード(-1:でZMUSICのワークに反映しない,0:反映する)
+	* > d0.hw=tempo value
+	* > d0.lw=timer value
+
+ZM_PLAY:		equ	$08		*演奏開始
+	*    cmd=$08
+	* < a1.l=track numbers{tr.w,tr.w,...-1(.w)}
+	*	=0 to play all(戻り値無し)
+	* > (a0)	設定できなかったトラック番号の並びが返る
+	*		-1=end code
+	* > a1.l=next addr
+
+ZM_PLAY2:		equ	$09		*もう一度共通コマンドから再演奏
+	*   cmd=$09
+
+ZM_PLAY_AGAIN:		equ	$0a		*前回のm_play()をもう一度やる
+	*   cmd=$0a
+
+ZM_PLAY_STATUS:		equ	$0b		*演奏状態の検査
+	*   cmd=$0b
+	* < d1.l=0:check all ch mode
+	* < a1.l=result status table address
+	*        (a1.l=0とすると戻り値はテーブルで返らずにd0.lに返る)
+	* > (a1)={active_device.l,active_device.l,...,-1.l }
+	* > d0.l=(a1.l=0のときのみ。0:演奏終了,1:演奏中)
+	*
+	* < d1.l=1:check all track mode
+	* < a1.l=result status table address
+	*        (a1.l=0とすると戻り値はテーブルで返らずにd0.lに返る)
+	* > (a1)={active_track.w,active_track.w,...,-1.w}
+	* > d0.l=(a1.l=0のときのみ。0:演奏終了,1:演奏中)
+	*
+	* < d1.l=2:channel checking mode
+	* < d2.hw=p_type($0000:FM,$0001:ADPCM,$8000～$8002:MIDI1～3)
+	* < d2.lw=p_ch(0-15)
+	* > d0.b=0 non active
+	*	 ne    active
+	*
+	* < d1.l=3:track checking mode
+	* < d2.l=track number(0-65534)
+	* > d0.b=0 non active
+	*	 ne    active
+
+ZM_STOP:		equ	$0c		*演奏停止
+	*   cmd=$0c
+	* < a1.l=track numbers{tr.w,tr.w,...-1(.w)}
+	* <     =0 to stop all
+	* > (a0)	設定できなかったトラック番号の並び
+	*		-1=end code
+	* > a1.l=next addr
+
+ZM_CONT:		equ	$0d		*演奏再開
+	*   cmd=$0d
+	* < a1.l=track numbers{tr.w,tr.w,...-1(.w)}
+	*	=0 to continue all
+	* > (a0)	設定できなかったトラック番号の並び
+	*		-1=end code
+	* > a1.l=next addr
+
+ZM_ATOI:		equ	$0e		*トラックデータアドレスを返す
+	*   cmd=$0e
+	* < d1.l=track number(0-65534)
+	* > a0.l=track address(0:track doesn't exist)
+
+ZM_SET_MASTER_CLOCK:	equ	$0f		*全音符の絶対音長設定
+	*   cmd=$0f
+	* < a1.l=0の時は値の問い合わせのみ
+	* < d1.l=0:通常音楽演奏用の設定,1:効果音演奏用の設定
+	* < $00(a1).w=拍子(上位バイト:分子/下位バイト:分母)
+	* < $02(a1).b=メトロノーム速度(音楽的音長)
+	* < $03(a1).b=reserve
+	* < $04(a1).w=調号(SMFの調号フォーマットに準拠)
+	* < $06(a1).w=全音符の絶対音長
+	* > a0.l=現在の設定値の格納アドレス
+	*	 パラメータの格納状況は上記に準ずる。
+
+ZM_PLAY_ZMD:	equ	$10		*ＺＭＤの演奏
+	*   cmd=$10
+	* < d2.l=total data size d2がゼロならバッファへは転送せず即演奏
+	*	 サイズはヘッダ8バイト分は含んでも含まなくてもいい
+	* < a1=play data address
+	*  (a1)=data...(header8バイトの次から)
+	* > d0.l=error code
+
+ZM_PLAY_ZMD_SE:	equ	$11		*ＺＭＤの効果音サイド演奏
+	*   cmd=$11
+	* < a1=play data address
+	*  (a1)=data...(header8バイトの次から)
+
+ZM_SE_PLAY:	equ	$12		*効果音モードプレイ
+	*   cmd=$12		高速処理が要求されるのでﾊﾟﾗﾒｰﾀﾁｪｯｸは無し
+	* < a1.l=compiled data address
+	*  (a1).w=total of play trks...(トラック・チャンネル情報テーブルから)
+
+ZM_SE_ADPCM1:	equ	$13		*ADPCMをSEモードで鳴らす
+	*   cmd=$13
+	* < a1.l=data address
+	* < d1.hwhb=data type(-1:ADPCM,1:16bitPCM,2:8bitPCM)
+	* < d1.hwlb=volume(0-127,64が標準)
+	* < d1.lwhb=pan(0-3 / $80+0-127)
+	* < d1.lwlb=frq(0:3.9kHz 1:5.2kHz 2:7.8kHz 3:10.4kHz 4:15.6kHz)
+	* < d2.l=data size
+	* < d4.lw=ch(0-15)
+	* < d4.hw=se priority(0-255)
+
+ZM_SE_ADPCM2:	equ	$14		*ドライバー内のADPCM DATAをSEモードで鳴らす
+	*   cmd=$14		*(エラーチェックはなし)
+	* < d1.hwhb=data type(-1:ADPCM,1:16bitPCM,2:8bitPCM)
+	* < d1.hwlb=volume(0-127)
+	* < d1.lwhb=pan(0-3 / $80+0-127)
+	* < d1.lwlb=frq(0:3.9kHz 1:5.2kHz 2:7.8kHz 3:10.4kHz 4:15.6kHz)
+	* < d2.l=PCM data number(d15が1ならば音色番号($8000+0-32767),
+	*			      0ならばノート番号(0-32767)指定)
+	* < d4.lw=ch(0-15)
+	* < d4.hw=se priority(0-255)
+
+ZM_INTERCEPT_PLAY:	equ	$15		*演奏開始制御
+	*   cmd=$15
+	* < d1.l＝-1 interception mode
+	* < d1.l＝0  release interception & play
+	* < d1.l＝1  release interception
+	* > none
+
+ZM_CURRENT_MIDI_IN:	equ	$16	*MIDI-INのカレント設定
+	*   cmd=$16
+	* < d1.w=midi-in port number(0～2,-1:ask)
+	* > d0.l=前回の設定
+	* - a2保存
+
+ZM_CURRENT_MIDI_OUT:	equ	$17	*MIDI-OUTのカレント設定
+	*   cmd=$17
+	* < d1.w=midi-out port number(0～2,-1:ask)
+	* > d0.l=前回の設定
+	* - a2.l保存
+	* x a0
+
+ZM_MIDI_TRANSMISSION:	equ	$18	*MIDI生データの転送
+	*   cmd=$18
+	* < d1.l:midi-out port number(0-2,-1:current)
+	* < d2.l:mode (size)
+	*	＝0 ASCII mode (end code:$1a)
+	*	≠0 BIN mode (data size)
+	* < a1.l=data address
+	* > d0.l=sum
+	* - all
+
+ZM_EXCLUSIVE:	equ	$19		*エクスクルーシブ転送
+	*   cmd=$19
+	* < a1.l=data address
+	* < d1.l=midi-out port number(0-2,-1:current)
+	* < d2.l=size
+	* < d3.hw=Maker ID
+	* < d3.lw=id,model
+
+ZM_SET_EOX_WAIT:	equ	$1b	*EOX送信後のウェイト
+	*   cmd=$1b
+	* < d1.w=wait parameter
+	* > d0.w=last parameter
+
+ZM_MIDI_INP1:	equ	$1c		*1バイトMIDI入力
+	*   cmd=$1c
+	* < d1.w=midi-out port number(0-2,-1:current)
+	* < d2.l=0 single mode
+	* < d2.l<>0 loop mode		*読み出せるまで待ちつづける
+	* > d0.b=recieved data
+	* > d0.w=minus:dataなし
+	* > d0.l=minus:読みこぼしあり
+	* > a0.l=前回の読みだしからの経過クロック数
+	* - d1
+
+ZM_MIDI_OUT1:	equ	$1d		*1バイトMIDI出力
+	*   cmd=$1d
+	* < d1.w=midi-out port number(0-2,-1:current)
+	* < d2.b=midi data
+	* > d0.l=error code
+
+ZM_MIDI_REC:	equ	$1e		*MIDI生データの録音
+	*   cmd=$1e
+	* < d1.w=I/F number(0-2,-1:current)
+	* > d0.l=error code
+
+ZM_MIDI_REC_END:	equ	$1f		*MIDI生データ録音終了&GETステータス
+	*   cmd=$1f
+	* < d1.w＝I/F number (0-2,-1:current)
+	* > d0.l=error code
+
+ZM_GS_RESET:	equ	$20		*GSの初期化
+	*   cmd=$20
+	* < d1.w=midi-out port number(0-2,-1:current)
+	* < d3.b=gs id number(0-127,-1:current)
+	* > d0.l=error code
+
+ZM_GS_PARTIAL_RESERVE:	equ	$21		*GSのパーシャルリザーブを設定
+	*   cmd=$21
+	* < d1.w=midi-out port number(0-2,-1:current)
+	* < a1.l=data address
+	* < d3.b=gs id number(0-127,-1:current)
+	* > d0.l=error code
+
+ZM_GS_REVERB:	equ	$22		*GSのリバーブパラメータ設定
+	*   cmd=$22
+	* < d1.w=midi-out port number(0-2,-1:current)
+	* < a1.l=data address
+	* < d2.l=size
+	* < d3.b=gs id number(0-127,-1:current)
+	* > d0.l=error code
+
+ZM_GS_CHORUS:	equ	$23		*gsのコーラスパラメータ設定
+	*   cmd=$23
+	* < d1.w=midi-out port number(0-2,-1:current)
+	* < a1.l=data address
+	* < d2.l=size
+	* < d3.b=gs id number(0-127,-1:current)
+	* > d0.l=error code
+
+ZM_GS_PART_PARAMETER:	equ	$24	*gsのパートパラメータ設定
+ZM_GS_PART_SETUP:	equ	$24	*gsのパートパラメータ設定
+	*   cmd=$24
+	* < a1.l=data address
+	* < d1.w=midi-out port number(0-2,-1:current)
+	* < d2.l=size(1～119)
+	* < d3.hw=gs part number
+	* < d3.lw=gs id number(0-127,-1:current)
+	* > d0.l=error code
+
+ZM_GS_DRUM_PARAMETER:	equ	$25	*SC55のドラムパラメータ設定	!v3
+ZM_GS_DRUM_SETUP:	equ	$25	*SC55のドラムパラメータ設定	!v3
+	*   cmd=$25
+	* < a1.l=data address
+	* < d1.w=midi-out port number(0-2,-1:current)
+	* < d2.l=size
+	* < d3.hw=gs map number*256+note number
+	* < d3.lw=gs id number(0-127,-1:current)
+	* > d0.l=error code
+
+ZM_GS_DRUM_NAME:	equ	$26	*SC55のドラムネーム設定	!v3
+	*   cmd=$26
+	* < a1.l=data address
+	* < d1.w=midi-out port number(0-2,-1:current)
+	* < d2.l=size
+	* < d3.hw=gs drum map number(0,1:PRESET/$80+0,1:USER)
+	* < d3.lw=gs id number(0-127,-1:current)
+	* > d0.l=error code
+
+ZM_GS_PRINT:	equ	$27		*SC55の画面へメッセージ出力
+	*   cmd=$27
+	* < a1.l=data address
+	* < d1.w=midi-out port number(0-2,-1:current)
+	* < d2.l=size
+	* < d3.b=gs id number(0-127,-1:current)
+	* > d0.l=error code
+
+ZM_GS_DISPLAY:	equ	$28		*SC55の画面にドットパターンを表示する
+	*   cmd=$28
+	* < a1.l=data address
+	* < d1.w=midi-out port number(0-2,-1:current)
+	* < d3.b=gs id number(0-127,-1:current)
+	* > d0.l=error code
+
+ZM_GM_SYSTEM_ON:	equ	$29		*GMシステム・オン
+	*   cmd=$29
+	* < d1.w=midi-out port number(0-2,-1:current)
+	* > d0.l=error code
+
+ZM_MT32_RESET:	equ	$30		*MT32の初期化
+	*   cmd=$30
+	* < d1.w=midi-out port number(0-2,-1:current)
+	* < d3.b=mt32 id number(0-127,-1:current)
+	* > d0.l=error code
+
+ZM_MT32_PARTIAL_RESERVE:	equ	$31		*MT32のパーシャルリザーブを設定
+	*   cmd=$31
+	* < a1.l=data address
+	* < d1.w=midi-out port number(0-2,-1:current)
+	* < d3.b=mt32 id number(0-127,-1:current)
+	* > d0.l=error code
+
+ZM_MT32_REVERB:	equ	$32		*MT32のリバーブパラメータ設定
+	*   cmd=$32
+	* < a1.l=data address
+	* < d1.w=midi-out port number(0-2,-1:current)
+	* < d2.l=size
+	* < d3.b=mt32 id number(0-127,-1:current)
+	* > d0.l=error code
+
+ZM_MT32_PART_SETUP:	equ	$33		*MT32のパートパラメータ設定
+	*   cmd=$33
+	* < a1.l=data address
+	* < d1.w=midi-out port number(0-2,-1:current)
+	* < d2.l=size
+	* < d3.b=mt32 id number(0-127,-1:current)
+	* > d0.l=error code
+
+ZM_MT32_DRUM:	equ	$34		*MT32のドラムパラメータ設定
+	*   cmd=$34
+	* < a1.l=data address
+	* < d1.w=midi-out port number(0-2,-1:current)
+	* < d2.l=size
+	* < d3.hw=tone no
+	* < d3.lw=mt32 id number(0-127,-1:current)
+	* > d0.l=error code
+
+ZM_MT32_COMMON:	equ	$35		*MT32の音色コモンパラメータ設定
+	*   cmd=$35
+	* < a1.l=data address
+	* < d1.w=midi-out port number(0-2,-1:current)
+	* < d2.l=size
+	* < d3.hw=program number(1-64)
+	* < d3.lw=mt32 id number(0-127,-1:current)
+	* > d0.l=error code
+
+ZM_MT32_PARTIAL:	equ	$36		*MT32の音色パーシャルパラメータ設定
+	*   cmd=$36
+	* < a1.l=data address
+	* < d1.w=midi-out port number(0-2,-1:current)
+	* < d2.l=size
+	* < d3.hw=program number(1-64)*256+partial number(1-4)
+	* < d3.lw=mt32 id number(0-127,-1:current)
+	* > d0.l=error code
+
+ZM_MT32_PATCH:	equ	$37		*MT32の音色パッチパラメータ設定
+	*   cmd=$37
+	* < a1.l=data address
+	* < d1.w=midi-out port number(0-2,-1:current)
+	* < d2.l=size
+	* < d3.hw=patch number(1-128)
+	* < d3.lw=mt32 id number(0-127,-1:current)
+	* > d0.l=error code
+
+ZM_MT32_PRINT:	equ	$38		*MT32の画面へメッセージ出力
+	*   cmd=$38
+	* < a1.l=data address
+	* < d1.w=midi-out port number(0-2,-1:current)
+	* < d2.l=size
+	* < d3.b=mt32 id number(0-127,-1:current)
+	* > d0.l=error code
+
+ZM_U220_SETUP:	equ	$39		*U220のセットアップパラメータ設定
+	*   cmd=$39
+	* < a1.l=data address
+	* < d1.w=midi-out port number(0-2,-1:current)
+	* < d3.b=u220 id number(0-127,-1:current)
+	* > d0.l=error code
+
+ZM_U220_PART_SETUP:	equ	$3a	*U220のﾃﾝﾎﾟﾗﾘｰﾊﾟｯﾁの(PART)ﾊﾟﾗﾒｰﾀ設定
+	*   cmd=$3a
+	* < a1.l=data address
+	* < d1.w=midi-out port number(0-2,-1:current)
+	* < d3.hw=part number(1～6)
+	* < d3.lw=u220 id number(0-127,-1:current)
+	* > d0.l=error code
+
+ZM_U220_COMMON:	equ	$3b		*U220のﾃﾝﾎﾟﾗﾘｰﾊﾟｯﾁのｺﾓﾝﾊﾟﾗﾒｰﾀ設定
+	*   cmd=$3b
+	* < a1.l=data address
+	* < d1.w=midi-out port number(0-2,-1:current)
+	* < d3.b=u220 id number(0-127,-1:current)
+	* > d0.l=error code
+
+ZM_U220_TIMBRE:	equ	$3c		*U220の音色パラメータ設定
+	*   cmd=$3c
+	* < a1.l=data address
+	* < d1.w=midi-out port number(0-2,-1:current)
+	* < d3.hw=program number(1-128)
+	* < d3.lw=u220 id number(0-127,-1:current)
+	* > d0.l=error code
+
+ZM_U220_DRUM_SETUP:	equ	$3d	*U220のﾃﾝﾎﾟﾗﾘｰﾊﾟｯﾁの(DRUM)ﾊﾟﾗﾒｰﾀ設定
+	*   cmd=$3d
+	* < a1.l=data address
+	* < d1.w=midi-out port number(0-2,-1:current)
+	* < d3.b=u220 id number(0-127,-1:current)
+	* > d0.l=error code
+
+ZM_U220_DRUM_INST:		equ	$3e	*U220のﾃﾝﾎﾟﾗﾘｴﾘｱのﾄﾞﾗﾑの音色を変更する
+	*   cmd=$3e
+	* < a1.l=data address
+	* < d1.w=midi-out port number(0-2,-1:current)
+	* < d3.hw=patch number(35～99)
+	* < d3.lw=u220 id number(0-127,-1:current)
+	* > d0.l=error code
+
+ZM_U220_PRINT:	equ	$3f		*U220の画面へメッセージ出力
+	*   cmd=$3f
+	* < a1.l=data address
+	* < d1.w=midi-out port number(0-2,-1:current)
+	* < d2.l=size
+	* < d3.b=u220 id number(0-127,-1:current)
+	* > d0.l=error code
+
+ZM_M1_SETUP:	equ	$40		*M1の受信MIDI CHの設定
+	*   cmd=$40
+	* < a1.l=data address
+	* > d0.l=error code
+
+ZM_M1_PART_SETUP:	equ	$41		*M1のSEQ SONG0の設定
+	*   cmd=$41
+	* < a1.l=data address
+	* > d0.l=error code
+
+ZM_M1_EFFECT_SETUP:	equ	$42		*M1のSEQ SONG0のEFFECTの設定
+	*   cmd=$42
+	* < a1.l=data address
+	* > d0.l=error code
+
+ZM_M1_PRINT:	equ	$43		*M1のSEQ SONG0のNAME設定
+	*   cmd=$43
+	* < a1.l=data address
+	* < d2.l=size
+	* > d0.l=error code
+
+ZM_SEND_TO_M1:	equ	$44		*M1へパラメータを書き込む
+	*   cmd=$44
+	* < d1.w=midi-out port number(0-2,-1:current)
+	* < d3.b=m1 id number(0-127,-1:current)
+	* > d0.l=error code
+
+ZM_SC88_MODE_SET:	equ	$46		*SC88のモードセット
+	*   cmd=$46
+	* < d1.w=midi-out port number(0-2,-1:current)
+	* < d3.hw=sc88 mode (0:single or 1:double)
+	* < d3.lw=sc88 id number(0-127,-1:current)
+	* > d0.l=error code
+
+ZM_SC88_REVERB:		equ	$47		*SC88のリバーブパラメータ設定
+	*   cmd=$47
+	* < d1.w=midi-out port number(0-2,-1:current)
+	* < a1.l=data address
+	* < d2.l=size
+	* < d3.b=sc88 id number(0-127,-1:current)
+	* > d0.l=error code
+
+ZM_SC88_CHORUS:		equ	$48		*SC88のコーラスパラメータ設定
+	*   cmd=$48
+	* < d1.w=midi-out port number(0-2,-1:current)
+	* < a1.l=data address
+	* < d2.l=size
+	* < d3.b=SC88 id number(0-127,-1:current)
+	* > d0.l=error code
+
+ZM_SC88_DELAY:		equ	$49		*SC88のディレイパラメータ設定
+	*   cmd=$49
+	* < d1.w=midi-out port number(0-2,-1:current)
+	* < a1.l=data address
+	* < d2.l=size
+	* < d3.b=SC88 id number(0-127,-1:current)
+	* > d0.l=error code
+
+ZM_SC88_EQUALIZER:	equ	$4a		*SC88のイコライザ・パラメータ設定
+	*   cmd=$4a
+	* < d1.w=midi-out port number(0-2,-1:current)
+	* < a1.l=data address
+	* < d2.l=size
+	* < d3.b=SC88 id number(0-127,-1:current)
+	* > d0.l=error code
+
+ZM_SC88_PART_SETUP:	equ	$4b		*SC88のパートパラメータ設定
+ZM_SC88_PART_PARAMETER:	equ	$4b		*SC88のパートパラメータ設定
+	*   cmd=$4b
+	* < a1.l=data address
+	* < d1.w=midi-out port number(0-2,-1:current)
+	* < d2.l=size(1～119)
+	* < d3.hw=sc88 part number(1-16)
+	* < d3.lw=sc88 id number(0-127,-1:current)
+	* > d0.l=error code
+
+ZM_SC88_DRUM_SETUP:	equ	$4c		*SC88のドラムパラメータ設定	!v3
+ZM_SC88_DRUM_PARAMETER:	equ	$4c		*SC88のドラムパラメータ設定	!v3
+	*   cmd=$4c
+	* < a1.l=data address
+	* < d1.w=midi-out port number(0-2,-1:current)
+	* < d2.l=size
+	* < d3.hw=sc88 map number*256+note number
+	* < d3.lw=sc88 id number(0-127,-1:current)
+	* > d0.l=error code
+
+ZM_SC88_DRUM_NAME:	equ	$4d	*SC55のドラムネーム設定	!v3
+	*   cmd=$4d
+	* < a1.l=data address
+	* < d1.w=midi-out port number(0-2,-1:current)
+	* < d2.l=size
+	* < d3.hw=sc88 drum map number(0,1:PRESET/$80+0,1:USER)
+	* < d3.lw=sc88 id number(0-127,-1:current)
+	* > d0.l=error code
+
+ZM_SC88_USER_INST:	equ	$4e		*SC88のユーザー音色パラメータ設定
+	*   cmd=$4e
+	* < a1.l=data address
+	* < d1.w=midi-out port number(0-2,-1:current)
+	* < d2.l=size
+	* < d3.hw=sc88 bank number*256+program number
+	* < d3.lw=sc88 id number(0-127,-1:current)
+	* > d0.l=error code
+
+ZM_SC88_USER_DRUM:	equ	$4f		*SC88のユーザードラムセット・パラメータ設定
+	*   cmd=$4f
+	* < a1.l=data address
+	* < d1.w=midi-out port number(0-2,-1:current)
+	* < d2.l=size
+	* < d3.hw=sc88 set number*256+note number
+	* < d3.lw=sc88 id number(0-127,-1:current)
+	* > d0.l=error code
+
+ZM_PCM_READ:	equ	$50		*ADPCMファイルを読み込む
+	*   cmd=$50
+	* < (a1)=TONE NAME(最大32bytes),FILENAME(?bytes),0
+	*   or
+	*   (a1)=TONE NAME(最大32bytes),source data number.l
+	* < d1.lw=note number(0～),timbre number($8000+0～)
+	* < d1.hw=flag of option existance(plus=なし,minus=あり)
+	* < d2.hwhb=登録次元 (-1=ADPCM 1=16bitPCM 0=V2互換)
+	* < d2.hwlb=オリジナルキー(0-127)
+	*
+	* < a1.l=0のときはd1.wで表されるTIMBRE/TONEを消去する
+	*
+	* > a0.l=next(end) of cmd address
+
+ZM_REGISTER_ZPD:	equ	$51		*ADPCMブロックデータの取り込み
+	*   cmd=$51
+	* < a1.l=filename address
+	* > d0.l=error code
+	* > work:header_bufferにファイルのヘッダ情報が格納されている
+
+ZM_SET_ZPD_TABLE:	equ	$52		*ＺＰＤデータのテーブルセット	!v3
+	*   cmd=$52
+	* < d1.l=version type(0:V1～2,1:V3,2:PDX)
+	* < a1.l=data address (ヘッダの次から)
+	* > d0.l=error code
+
+ZM_CONVERT_PCM:		equ	$53
+	*   cmd=$53
+	* < d1.l=mode(0:adpcm to pcm,1:pcm to adpcm)
+	* < d2.l=size(変換元のデータサイズ)
+	* < a1.l=src data address
+	* < a2.l=dest data address
+	* > none
+
+ZM_EXEC_SUBFILE:	equ	$54		*サブファイルの読み込み
+	*   cmd=$54
+	* < a1=filename文字列(endcode=0)
+	* > d0.l=error code
+
+ZM_TRANSMIT_MIDI_DUMP:	equ	$55		*MIDIダンプの転送
+	*   cmd=$55
+	* < d1.w=midi port number(0～2),-1はカレント
+	* < a1.l=filename文字列(endcode=0)
+	* > d0.l=error code
+
+ZM_SET_WAVE_FORM1:	equ	$56		*波形メモリ登録
+	*   cmd=$56				*v3済み
+	* < a1.l=data address
+	* < d1.w=wave number
+	* < 0(a1).l=data size
+	* < 4(a1).b=loop type
+	* < 5(a1).l=loop start offset
+	* < 9(a1).l=loop end offset
+	* < 13(a1).l=loop time(0=∞)
+	* < 17(a1).l reserved area
+	* < 21(a1).b name len 
+	* < 22(a1)～ name
+	* < 22+name len(a1)～ data(ただし偶数アドレスから始まっている)
+	* > d0.l=0 no error
+
+ZM_SET_WAVE_FORM2:	equ	$57		*波形メモリ登録(その2)
+	*   cmd=$57				*v3済み
+	* < a1.l=data address
+	* < d1.w=wave number
+	* < 0(a1).l=data size
+	* < 4(a1).b=loop type
+	* < 5(a1).l=loop start offset
+	* < 9(a1).l=loop end offset
+	* < 13(a1).l=loop time(0=∞)
+	* < 17(a1).l reserved area
+	* < 21(a1).b name len 
+	* < 22(a1)～ name
+	* < 22+name len(a1)～ data(ただし偶数アドレスから始まっている)
+	* > d0.l=0 no error
+	* > a0.l next addr
+
+ZM_OBTAIN_EVENTS:	equ	$58		*各種イベントの取得
+	*   cmd=$58
+	* < a1.l=destination address table
+	* < d1.w=omit flag (d0:m_play,d1:m_stop,d2:m_cont...
+	*			bit:1=do parameter set	bit:0=omit parameter setting)
+	*   00(a1).l	0:m_play(0:off)
+	*   04(a1).l	1:m_stop(0:off)
+	*   08(a1).l	2:m_cont(0:off)
+	*   0c(a1).l	3:Jump after if performance comes to an end.(0:off)
+	*   10(a1).l	4:Loop time value(0:off/1-256)上位16ビットは0に初期化しておくこと
+	*   14(a1).l	5:Jump after n times loop
+	*   18(a1).l	6:Clock value(0:off)
+	*   1c(a1).l	7:Jump after n clocks
+	* > a0.l=イベントテーブルアドレス
+	*
+	* < a1.l=-1 ask mode
+	* > a0.l=イベントテーブルアドレス
+
+ZM_LOOP_CONTROL:	equ	$59	*演奏トラック全体のループ制御を行う
+	*   cmd=$59
+	* < d1.l=control mode(-1:ask loop time,0:normal loop mode,1:ignore loop)
+	* > d0.l=loop time(-1:error)
+
+ZM_MASK_TRACKS:	equ	$5a		*トラックマスク
+	*   cmd=$5a
+	* < a1.l=parameter table
+	* < 	 param. sequence
+	*		{track number(.w),mask mode(.w),...,-1.w}
+	*		track number:(0-65534)(.w)
+	*		mask mode 0.w:enable
+	*			  1.w:reverse
+	*			 -1.w:disable
+	*			end code:-1.w
+	* < a1.l=0		all tracks
+	* < d1.w=0		enable
+	* < d1.w=+1		reverse
+	* < d1.w=-1		mask
+	*
+	* < a1.l=1		SOLO mode
+	* < d1.w=0-65534	track numbers
+	*
+	* > (a0)		設定できなかったトラック番号の並び
+	*			-1=end code
+	* > next addr(case:< a1.l<>0)
+
+ZM_MASK_CHANNELS:	equ	$5b		*チャンネルマスク
+	*   cmd=$5b
+	* < a1.l=parameter table
+	* < 	param. sequence
+	*		{device type(.w),ch number(.w),mask mode(.w)...,-1(.l)}
+	*		device type:0,1,$8000-$8002
+	*		ch number  :0-15
+	*		mask mode	 0.w:enable
+	*				-1.w:disable
+	*		endcode=-1.l
+	* < a1.l=0	all ch
+	* < d1.w=0	enable
+	* < d1.w=+1	reverse
+	* < d1.w=-1	mask
+	*
+	* < a1.l=1	SOLO mode
+	* < d1.l	type,ch
+	*
+	* > (a0)	設定できなかったチャンネル番号の並び
+	*		-1.l=end code
+
+ZM_SET_CH_OUTPUT_LEVEL:	equ	$5c	*各チャンネルの出力レベルの設定
+	*   cmd=$5c
+	* < a1.l=parameter table
+	* < 	param. sequence
+	*		{device type(.w),ch number(.w),omt(b),speed(.w),start(.b),end(.b)}
+	*		device type:0,1,$8000～$8002,-1:all
+	*		ch number:0-15
+	*		omt:d0=speed,d1=start,d2=end
+	*		fader speed:0-65535
+	*		start level:0-128
+	*		end level:0-128
+	* > d0		 0:ok
+	*		-1:error
+
+ZM_SET_TR_OUTPUT_LEVEL:	equ	$5d		*各トラックの出力レベルの設定
+	*   cmd=$5d
+	* < a1.l=parameter table
+	* < 	sequence of {tr number(.w),omt(b),speed(.w),start(.b),end(.b)}
+	*		tr number.w:0-65534,65535:all
+	*		omt:d0=speed,d1=start,d2=end
+	*		fader speed:0-65535
+	*		start level:0-128
+	*		end level:0-128
+	* > d0		 0:ok
+	*		-1:error
+
+ZM_MASTER_FADER:	equ	$5e		*ﾌｪｰﾄﾞｱｳﾄ/ｲﾝ処理
+	*   cmd=$5e
+	* < a1.l=parameter list address
+	*	{ device-code.w:0/1/$8000～$8002/-1,
+	*	  omt.b:%000～%111
+	*	  speed.w:0-65535
+	*	  start-level.b:0-128, end-level.b:0-128}
+	* > d0	=0:ok
+	*	-1:error
+
+ZM_GET_FADER_STATUS:	equ	$5f		*フェーダーの状態を得る
+	*   cmd=$5f
+	* > d0.l d0:実行中のチャンネルフェーダーすべてが目的に達している(1:達成した 0:達成していない)
+	*	 d1:実行中のマスターフェーダーすべてが目的に達している(1:達成した 0:達成していない)
+	*	 d6:チャンネルフェーダーの状態(1:実行中 0:実行されていない)
+	*	 d7:マスターフェーダーの状態(1:実行中 0:実行されていない)
+
+ZM_GET_PLAY_TIME:	equ	$60	*演奏時間の取得
+	*   cmd=$60
+	* > d0.l=00HH:MM:SS
+	*HH:0-99 MM:0-59 SS:0-59
+
+ZM_GET_1ST_COMMENT:	equ	$61	*最初のコメントを取り出す
+	*   cmd=$61
+	* > a0.l=comment_address
+
+ZM_GET_TIMER_MODE:	equ	$62		*どのタイマーを使用しているか
+	*   cmd=$62
+	* > d0.l=timer type(0:Timer A  1:Timer B  2:YM3802 timer)
+
+ZM_GET_TRACK_TABLE:	equ	$63		*演奏トラックリストのアドレスを得る
+	*   cmd=$63
+	* > a0.l=play_trk_tbl
+	* > d0.l=play_trk_tbl_se
+
+ZM_GET_PLAY_WORK:	equ	$64		*演奏ワークアドレスを返す
+	*   cmd=$64
+	* < d1.l=trk number(0-65534)
+	* > a0=trk n seq_wk_tbl
+	* > d0=trk n seq_wk_tbl_se
+
+ZM_GET_BUFFER_INFORMATION:	equ	$65		*各バッファのインフォメーション
+	*   cmd=$65
+	* > a0.l=buffer head address
+
+ZM_GET_ZMSC_STATUS:	equ	$66			*ZMUSICのワーク状況
+	*   cmd=$66
+	* > a0.l=status work address
+
+ZM_CALC_TOTAL:	equ	$67		*各ﾄﾗｯｸのｽﾃｯﾌﾟﾀｲﾑの合計を求める(外部組み込み)
+	*   cmd=$67
+	* < a1.l=ZMD address	(ヘッダはなくても有ってもいい
+	*			 ヘッダがある場合はバージョンチェックをする)
+	*	=0ならばa0.l=zmlentblを返す
+	* > d0.l=0:no error
+	* > a0.l=結果格納アドレス(使用後開放すること)(ZCLABEL.MAC参照)
+	* > d0.l=n of error
+	* > a0.l=error table(使用後開放すること)
+
+ZM_APPLICATION_RELEASER:	equ	$68	*サポートプログラムの解除
+	*   cmd=$68
+	* < a1.l=release routine address(0:cancel)
+	* < d1.l=result code(キャンセル時に使用)
+	* > d0.l=result code
+	* > a0.l=0:error/nz:no error
+	* 1)	a1.lから始まる各解放ルーチンは必要処理を実行後、最後に
+	*	ZMUSIC側で解放してほしいメモリブロックがあるならば
+	*	そのアドレスをa0.lにかえすようにすること。
+	*	なければa0.l=0を返すこと
+	* 2)	a1.lからの解放ルーチン実行後に、なにか表示したいメッセージが
+	*	有る場合はその文字列のアドレスをa1.lに返すようにすること。
+	*	なければa1.l=0を返すこと
+	* 3)	a1.lからの解放ルーチンでエラーが発生した場合は戻り値として
+	*	d0.l(0:no error,1:occupied,-1:error)を返すことが出来る。
+	*	エラーが発生した場合もその旨を告げるメッセージ文字列をa1.lに
+	*	与えることが出来る。
+
+ZM_RELEASE_DRIVER:	equ	$69		*ZMUSICの解除
+	*   cmd=$69
+	* > d0.l=error code(0:release completed)
+	* > a0.l=driver address(to be free)
+
+ZM_OCCUPY_ZMUSIC:		equ	$6a	*ZMUSICドライバの占有
+	*   cmd=$6a
+	* < d1.l=1	lock ZMUSIC
+	* < d1.l=0	unlock ZMUSIC
+	* < d1.l=-1	ask status
+	* > d0.l	case:d1.l=1,0	d0:以前の占有状態(d1.l=-1のケース参照)
+	* > d0.l	case:d1.l=-1	d0=0:free,	d0.l=1:occupied
+
+ZM_HOOK_FNC_SERVICE:	equ	$6b	*ファンクションコールのフック
+	*   cmd=$6b
+	* < d1.l=function number
+	* < a1.l=new user's job address(-1:ask mode)
+	* > a0.l=original job address
+
+ZM_HOOK_ZMD_SERVICE:	equ	$6c	*ＺＭＤ(演奏データ／共通コマンド)オペレーションフック
+	*   cmd=$6c
+	* < d1.lw=ZMD code
+	* < d1.hw=device(0:FM,1:ADPCM,2:MIDI,
+	*		-1:COMMON ZMD,-2:COMMON ZMD of SE side,
+	*		-3:CONTROL ZMD)
+	* < a1.l=new user's job address(-1:ask mode)
+	* > d0.l=0:no error
+	* > a0.l=original job address
+
+ZM_OCCUPY_COMPILER:	equ	$6d	*ZMUSICコンパイラの占有(外部組み込み)
+	*   cmd=$6d
+	* < d1.l=1	lock Compiler
+	* < d1.l=0	unlock Compiler
+	* < d1.l=-1	ask status
+	* > d0.l	case:d1.l=1,0	d0:以前の占有状態(d1.l=-1のケース参照)
+	* > d0.l	case:d1.l=-1	d0=0:free,	d0.l=1:occupied
+
+ZM_STORE_ERROR:		equ	$6e	*エラーキューに値を設定
+	*   cmd=$6e
+	* < d1.l=error code(-1のときは問い合わせのみ)
+	*	(エラーの発生したファンクション番号(0-32767)*65536+エラーの種類(0-65535))
+	* < d2.l=n_of_errに幾つ加算するか
+	* > a0.l=エラーストックバッファのアドレス
+	* > d0.l=現在ストックしているエラー情報の個数
+
+ZM_PRINT_ERROR:	equ	$6f		*エラーの表示／出力
+	*   cmd=$6f
+	* < d1.hw=output mode(0:screen,1:buffer)	(Be used in ZMSC0)
+	* < d1.lw=language mode(0:English,1:Japanese)
+	* < d2.l=num. of err/warn
+	* < a1.l=ZMD filename(ない場合は0)
+	* < a2.l=source address(ない場合は0)
+	* < a3.l=source filename(ない場合は0)
+	* < a5.l=error table addr.
+	* > a0.l=出力バッファ(endcod=0)(if d1.l==1)	(Be used in ZMSC0)
+	* > d0.l=出力バッファサイズ(endcode含まず)
+	* - all
+
+ZM_GET_MEM:	equ	$70		*メモリの確保
+	*   cmd=$70
+	* < d2.l=memory size
+	* < d3.l=employment
+	* > d0.l=memory block address (or error code/ depends on _S_MALLOC)
+	* > d2.l=long word border size
+	* > a0.l=data address
+	* - all
+
+ZM_ENLARGE_MEM:	equ	$71		*メモリブロックの拡大縮小
+	*   cmd=$71
+	* < d2.l=new memory size
+	* < a1.l=now address
+	* > d0.l=address (0:done it, error/ depends on _S_MALLOC)
+	* > d2.l=long word border size
+	* > a0.l=address
+	* - all
+
+ZM_FREE_MEM:	equ	$72		*メモリブロックの解放
+	*   cmd=$72
+	* < a1.l=data address
+	* > d0.l=0 no error
+	* - a1
+
+ZM_FREE_MEM2:	equ	$73	*メモリブロックの解放　その2(使用用途識別開放)
+	*   cmd=$73
+	* < d3.l=employment ID(0:ALL)
+	* > d0.l:0 no error, ne:error
+	* - all
+
+ZM_EXCHANGE_MEMID:	equ	$74	*メモリブロックのIDの変更
+	*   cmd=$74
+	* < a1.l=mem.block address
+	* < d1.l=mode	(0:no check) (1:check mode) (-1:exchange all who got d2 id.) 
+	* < d2.l=old ID (Can be omitted in 'no check' case.)
+	* < d3.l=New ID ($8000_0000 means lock mem.)($0000_0000 means unlock mem.)
+	* > d0.l=return (0:no error, ne:error)
+	* - all except d0,a0
+
+ZM_INIT_ALL:	equ	$78		*ZMUSICの初期化
+	*   cmd=$78
+	* > d0.l=Version ID
+	*	バージョンIDはたとえばバージョン3.21ならば $00003241となる。
+	*	4の部分は固定値。
+
+ZM_INT_START:	equ	$79		*割り込みの開始制御
+	*   cmd=$79
+	* < d1.w=-1	音楽タイマ 
+	* < d1.w=0	音楽／効果音タイマ 
+	* < d1.w=1	効果音タイマ 
+
+ZM_INT_STOP:	equ	$7a		*割り込みの停止制御
+	*   cmd=$7a
+	* < d1.w=-1	音楽タイマ 
+	* < d1.w=0	音楽／効果音タイマ 
+	* < d1.w=1	効果音タイマ 
+
+ZM_SET_INT_SERVICE:	equ	$7b	*ユーザ割り込みサービスの設定
+	*   cmd=$7b
+	*設定時
+	* 	< d1.hw=全音符のクロック数
+	* 	< d1.lw=音楽テンポ
+	* 	< a1.l=ユーザー割り込みエントリ
+	*	> d0.l=0:done	d0.l=-1:先約有り,a0.l=ルーチンエントリアドレス
+	*テンポの変更
+	* 	< d1.hw=全音符のクロック数
+	* 	< d1.lw=音楽テンポ
+	*	< a1.l=-1
+	*	> d0.l=0:正常終了	d0.l=-1:失敗
+	*検査時
+	* 	< d1.l=-1
+	*	< a1.l=0
+	*	> d0.l=0:空き,a0.l=0	d0.l=-1:先約有り,a0.l=ルーチンエントリアドレス
+	*解除時
+	* 	< d1.l=0
+	* 	< a1.l=ユーザー割り込みエントリ
+	* 	> d0.l=0:done	d0.l=-1:解除不可能
+	* x d0-d2/a0-a1
+
+ZM_CONTROL_TEMPO:	equ	$7c	*テンポ設定の主導権設定
+	*   cmd=$7c
+	* < d1.l=-1	テンポ設定の主導権を外部アプリケーションに委託
+	* < d1.l=0	テンポ設定主導権を奪還(内部パラメタでテンポ初期化も行う)
+
+ZM_ZMUSIC_MODE:		equ	$7e	*ZMUSICモード切り換え
+	*   cmd=$7e
+	* < d1.l=mode(2:Ver.2.0 mode,Ver.3.0 mode)
+
+ZM_EXEC_ZMD:	equ	$7f	*ZMD列の実行
+	*   cmd=$7f
+	* < d1.l=トラック番号(0-65534,65535:特に指定しない場合)
+	* < d2.l=ZMD列の長さ(1～)
+	* < a1.l=ZMD列格納アドレス(バッファ自体はd2.l+8の大きさを必要とする)

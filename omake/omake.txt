@@ -1,0 +1,41 @@
+●入っているもの
+
+・VIP.ZMS	X1のFM音源音色データです
+・68SND.ZMS	X680x0標準FM音源ドライバOPMDRV.Xの音色データです
+・M1_ZM_STD.MDD	KORGのMUSIC WORKSTATION M1/M1R/M1EX/M1REXのプリセット音色
+		データです。ベンドレンジを12(1オクターブに変更してあります)
+・FONT1.ZSV	ZSV.R用の組み込みフォント (C)ENG
+・FONT2.ZSV	ZSV.R用の組み込みフォント (C)ENG
+
+
+●VIP.ZMS、68SND.ZMSの使い方
+
+　ZMSC3.X常駐後、
+
+	A>ZP3.R filename
+
+で音色が設定されます。設定後、VIP.ZMS、68SND.ZMSそれぞれのなかで定義されている
+FM音源音色が使えるようになります。
+
+●M1_ZM_STD.MDDの使い方
+
+　ZMSC3.X常駐後、X680x0のMIDI-OUTとM1のMIDI-INをMIDIケーブルで接続し
+
+	A>ZP3.R M1_ZM_STD.MDD
+
+としてください。10数秒でM1の音色のすべてがベンドレンジを1オクターブに
+変更したプリセット音色に置き変わります。
+
+  M1_ZM_STD.MDDは楽器側のメモリを書き換えてしまうものですので取り扱いには
+十分注意してください。また、M1の出荷バージョンにより、データが正しく
+転送されない場合もあります。
+
+●FONT1.ZSV,FONT2.ZSVの使い方
+
+　ZSV.Rのフォントです。
+
+	A>ZSV.R -F FONT1.ZSV
+
+のようにしてZSV.Rを起動してください。ROMフォントとはひと味違った雰囲気の
+
+ZSVが起動するはずです。

@@ -1,0 +1,14 @@
+v_code:		equ	$30	*バージョンＩＤ
+v_code_:	equ	$02	*バージョンＩＤ端数
+ver_type:	equ	$40	*INTEGRAL VERSION
+
+version	macro
+	dc.b	' ',$f3,(v_code/16)+$30,$f3,'.',$f3,($0f.and.v_code)+$30,$f3,v_code_+$30
+	dc.b	$f3,'C'
+	endm
+
+test	macro
+*	dc.b	$f3,"A"
+*	dc.b	" ",$1b,'[47mTEST0118',$1b,'[m'
+	endm
+

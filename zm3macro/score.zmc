@@ -1,0 +1,133 @@
+/ ZMS MACRO FILE < 楽譜に記載されている記号 >
+
+/ 速度記号
+
+.define	[Largo]			{[TEMPO  40]}
+.define	[Lento]			{[TEMPO  50]}
+.define	[Adagio]		{[TEMPO  56]}
+.define	[Andante]		{[TEMPO  69]}
+.define	[Andantino]		{[TEMPO  76]}
+.define	[Moderato]		{[TEMPO  88]}
+.define	[Allegretto]		{[TEMPO 104]}
+.define	[Allegro_Moderato]	{[TEMPO 112]}
+.define	[Allegro]		{[TEMPO 126]}
+.define	[Vivace]		{[TEMPO 160]}
+.define	[Presto]		{[TEMPO 184]}
+.define	[Prestissimo]		{[TEMPO 208]}
+
+/ 速度変更記号
+
+/.define	[accelerando]	{} / 次第にはやく
+/.define	[accel.]	{} / 〃
+/.define	[stringendo]	{} / 次第にせきこむように
+/.define	[string.]	{} / 〃
+/.define	[ritardando]	{} / 次第におそく
+/.define	[rit.]		{} / 〃
+/.define	[rallentando]	{} / 次第にゆるやかに
+/.define	[rall.]		{} / 〃
+/.define	[a_tempo]	{} / すぐ前のテンポに戻す
+/.define	[Tempo_I]	{} / 曲の最初のテンポに戻す
+/.define	[Tempo_rubato]	{} / 自由なテンポで
+/.define	[in_tempo]	{} / テンポをたもって
+
+/ 速度補助記号
+
+/.define	[malto]		{} / きわめて
+/.define	[assai]		{} / 十分に
+/.define	[poco]		{} / 少し
+/.define	[poco_a_poco]	{} / 少しずつ
+/.define	[non_trappo]	{} / はなはだしくなく
+/.define	[ma_non_tanto]	{} / しかし、はなはだしくなく
+/.define	[guasi]		{} / ～のように
+
+/ 強弱記号
+
+/.define	[fffff]		{} / 強く
+/.define	[ffff]		{} / ↑
+/.define	[fff]		{} / ｜
+/.define	[ff]		{} / ｜
+/.define	[f]		{} / ｜
+/.define	[mf]		{} / (基準)
+/.define	[mp]		{} / ｜
+/.define	[p]		{} / ｜
+/.define	[pp]		{} / ｜
+/.define	[ppp]		{} / ｜
+/.define	[pppp]		{} / ↓
+/.define	[ppppp]		{} / 弱く
+
+/ 強弱の変化
+
+/.define	[crescendo]	{} / だんだん強く
+/.define	[cresc.]	{} / 〃
+/.define	[＜]		{} / 〃
+/.define	[diminuendo]	{} / だんだん弱く
+/.define	[decrescendo]	{} / 〃
+/.define	[decresc.]	{} / 〃
+/.define	[＞]		{} / 〃
+/.define	[fp]		{} / 瞬間的に f すぐに p
+/.define	[sfp]		{} / 瞬間的に sf すぐに p
+
+/.define	[sf]		{} / 瞬間的に f	↑弱
+/.define	[sfz]		{} / 瞬間的に sfz	｜アクセント
+/.define	[fz]		{} / 瞬間的に fz	↓強
+
+/ 補助記号
+
+/.define	[piu]		{} / 今までよりも
+/.define	[subito]	{} / 突然
+/.define	[sempre]	{} / 同様に
+/.define	[.e]		{} / そして
+/.define	[allargand]	{} / ゆったりしながら強く
+/.define	[calando]	{} / だんだん弱めながらおそく
+/.define	[morendo]	{} / 〃
+/.define	[perdendosi]	{} / 〃
+/.define	[smorzando]	{} / 〃
+
+/ 曲想記号(表現記号)
+/.define	[pesante]		{} / 重々しく
+/.define	[grave]			{} / 重々しくおごそかに
+/.define	[maestoso]		{} / 威厳をもって
+/.define	[tranquillo]		{} / 静かに、おだやかに
+/.define	[misterioso]		{} / 神秘的に
+/.define	[nobilmente]		{} / 高貴に
+/.define	[elegante]		{} / 優雅に
+/.define	[grazioso]		{} / 〃
+/.define	[con_grazia]		{} / 〃
+/.define	[piacevole]		{} / 愛らしく、気持ちよく
+/.define	[amabile]		{} / 〃
+/.define	[dolce]			{} / 〃
+/.define	[affettuoso]		{} / 愛情をこめて
+/.define	[espressivo]		{} / 表情豊かに
+/.define	[con_espressione]	{} / 〃
+/.define	[con_sentimento]	{} / 感情をこめて
+/.define	[vivo]			{} / 生きいきと、はやく
+/.define	[con_brio]		{} / 生きいきと、活気をもって
+/.define	[animato]		{} / 〃
+/.define	[con_anima]		{} / 〃
+/.define	[feroce]		{} / 野生的に激しく
+/.define	[con_fuoco]		{} / 火のようにねつれつに
+/.define	[appassionato]		{} / 熱情的に
+/.define	[passionato]		{} / 感情的に
+/.define	[lamentabile]		{} / 悲しげに
+/.define	[lamentoso]		{} / 〃
+/.define	[dolente]		{} / 〃
+/.define	[capriccioso]		{} / 気まぐれに
+/.define	[scherzando]		{} / たわむれるように
+/.define	[spiritoso]		{} / 精神をもって元気に
+/.define	[con_spirito]		{} / 〃
+/.define	[pastorale]		{} / 牧歌風に
+/.define	[rusticano]		{} / 牧歌ふうに素朴に
+/.define	[semplice]		{} / 単純に素朴に
+/.define	[comodo]		{} / ほどよく気楽に
+/.define	[leggiero]		{} / 軽やかに
+/.define	[arioso]		{} / 歌うように
+/.define	[cantabile]		{} / 〃
+/.define	[sostenuto]		{} / 音を十分保って
+/.define	[marziale]		{} / 行進曲風に
+/.define	[agitato]		{} / 激昴してせきこんで
+/.define	[energico]		{} / 情力的に勢いよく
+/.define	[brillante]		{} / 輝かしく華やかに
+/.define	[grandioso]		{} / 堂々と壮大に
+/.define	[risoluto]		{} / きっぱりと
+/.define	[giocoso]		{} / 陽気に
+ 

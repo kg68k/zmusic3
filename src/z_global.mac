@@ -1,0 +1,75 @@
+if_max:		equ	4	*インターフェースの最大値
+if_m0:		equ	0
+if_m1:		equ	1
+if_mr0:		equ	2
+if_mr1:		equ	3
+ch_max:		equ	25	*FM8+ADPCM1+MIDI16=25
+ch_max_:	equ	32	*FM8+ADPCM8+MIDI16=32(PCM8 mode)
+dch_max:	equ	80	*FM8+ADPCM8+MIDI64=80(PCM8 mode)
+pl_max:		equ	128	*一度に演奏可能なトラック数
+adpcm_ch_max:	equ	16	*ADPCMチャンネル数
+tempo_max:	equ	5000	*設定できるテンポの最大値
+velo_max:	equ	128	*ベロシティシーケンス出来るノート数
+max_note_on:	equ	16	*一度にキー音出来るノート数
+max_note_len:	equ	32767	*音長の最大クロック数
+TIE_GATE:	equ	$8000	*タイのゲートタイム
+TIE_GATE_CODE:	equ	-1	*タイの内部表現ゲートタイム
+CHORD_TIE_GATE:	equ	-1	*和音タイのゲートタイム(実際は$7fffとみなされる)
+INF_GATE:	equ	-2	*絶対音長0の内部表現
+MAX_GATE:	equ	32767
+aftc_max:	equ	8	*アフタータッチシーケンス出来る最大ポイント数
+modu_max:	equ	8	*モジュレーションシーケンスが出来る最大ポイント数
+arcc_max:	equ	4	*同時に並列実行できるARCCの数
+mod_dflt:	equ	6	*デフォルトのモジュレーションスピード
+*arcc_dflt:	equ	11	*デフォルトのARCC値
+spd_max:	equ	32767	*モジュレーションスピードの最大値
+fader_spd_max:	equ	65535	*フェーダーのスピードの最大値
+rept_max:	equ	65535	*|:～:|の最大繰り返し回数
+fader_dflt_spd:	equ	16	*フェーダーのデフォルトスピード
+num_of_80:	equ	32	*ADPCM音のダミーデータ「$80」の数
+fm_ch_max:	equ	8	*FM音源のチャンネル数
+*-----------------------------------------------------------------------------
+NOP:		equ	$4e71		*NOPの命令コード
+NOP_NOP:	equ	$4e71_4e71	*NOPの命令コード
+JMP:		equ	$4ef9		*JMPの命令コード
+JSR:		equ	$4eb9		*JSRの命令コード
+BRA:		equ	$6000		*BRA.wの命令コード
+BPL:		equ	$6A00		*BPL.wの命令コード
+BNE:		equ	$6600		*BNE.wの命令コード
+BSR:		equ	$6100		*BSR.wの命令コード
+RTS:		equ	$4e75		*RTSの命令コード
+RTE:		equ	$4e73		*RTEの命令コード
+CCR_NEGA:	equ	%0000_1000
+CCR_ZERO:	equ	%0000_0100
+*-----------------------------------------------------------------------------
+tr_max:		equ	65535		*確保出来るトラック数の最大値
+trk_n_max_default:	equ	16	*初期トラック本数
+trk_tbl_size:	equ	16		*トラックテーブルサイズ
+trk_tbl_size_:	equ	4
+*-----------------------------------------------------------------------------
+fmsnd_reg_max:	equ	256*128	*FM音色番号の最大個数
+fm_addr_port:	equ	$e90001
+fm_data_port:	equ	$e90003
+fmsnd_size:	equ	48	*2+30+16
+fmsndname_len:	equ	16
+fmsnd_exists:	equ	$8000	*FM音源の音色があるという印(音色DATAの先頭WORD)
+*-----------------------------------------------------------------------------
+wv_reg_max:	equ	32768-8	*仕様上の最大定義個数
+wv_def_max:	equ	8	*デフォルト波形はいくつあるか
+wv_tbl_size:	equ	32	*1個あたりの波形メモリの管理テーブルサイズ
+wv_tbl_size_:	equ	5	*1個あたりの波形メモリの管理テーブルサイズ(2の何乗か)
+*-----------------------------------------------------------------------------
+adpcm_bank_max:		equ	255	*ＡＤＰＣＭの最大バンク数
+adpcm_reg_max:		equ	256*128
+adpcm_vol_max:		equ	65535
+adpcm_tbl_size:		equ	64	*atrb,addr,size,loop
+adpcm_tbl_size_:	equ	6	*adpcm_tbl_sizeが2何乗か
+adpcm_original_tune:	equ	$0001_0000	*原音程
+adpcm_original_volume:	equ	64		*原音量
+*-----------------------------------------------------------------------------
+MIDI_VIB:	equ	1
+MIDI_VOL:	equ	7
+MIDI_PAN:	equ	10
+MIDI_EXP:	equ	11
+MIDI_DMP:	equ	$40
+*-----------------------------------------------------------------------------

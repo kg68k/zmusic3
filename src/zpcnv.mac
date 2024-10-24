@@ -1,0 +1,16 @@
+	.nlist
+	.include	version.mac
+
+m_err	macro	ec
+	move.l	#$8000_0000+ZM_ZPCNV*65536+ec,d0
+	bra	m_error_code_exit
+	endm
+
+err	macro	ern
+	move.l	#ern,d0
+	bra	t_error_code_exit
+	endm
+
+ZPCNV3:		equ	0	*ZPCNV3 mark
+ZM_ZPCNV:	equ	0	*dummy
+sv:		equ	0	*supervisor=0

@@ -1,0 +1,27 @@
+M_KEY_ON	equ	$0000	* 演奏CH KEY ON
+M_KEY_OFF	equ	$0100	* 演奏CH KEY OFF
+M_SET_PCM	equ	$0200	* 演奏CH データ登録
+M_SET_FRQ	equ	$0300	* 演奏CH 再生周波数設定
+M_SET_PITCH	equ	$0400	* 演奏CH 再生音程設定
+M_SET_VOL	equ	$0500	* 演奏CH 再生音量設定
+M_SET_PAN	equ	$0600	* 演奏CH PAN設定
+M_CHG_PCMKIND	equ	$0700	* 演奏CH PCM種類変更
+
+M_EFCT_OUT	equ	$1000	* 効果音 ノーマル出力
+M_EFCT_AOUT	equ	$1100
+M_EFCT_LOUT	equ	$1200
+M_EFCT_STOP	equ	$1300	* 効果音 出力停止
+
+M_LOCK		equ	$8000	* MPCM占有
+M_FREE		equ	$8001	* MPCM占有解除
+M_INIT		equ	$8002	* MPCM初期化
+M_SET_MASK	equ	$8003	* 割り込みマスク設定
+M_SET_MODE	equ	$8004	* MPCMモード設定
+M_SET_VOLTBL	equ	$8005	* 音量テーブル設定
+M_SET_ECHCNT	equ	$8006	* 効果音チャンネル発声数設定
+
+M_ASK_CHWORK	equ	$8010	* 使わないでクダサイ
+M_ASK_SYSWORK	equ	$8011
+M_ASK_CHFUNC	equ	$8012
+M_ASK_ALLFUNC	equ	$8013
+
