@@ -7,7 +7,7 @@
 *		 Programmed by Z.Nishikawa
 *
 *-------------------------------------------------------
-		.include	data_io.has
+		.include	data_io.s
 		.text
 					*効果音エントリ
 do_se_ope:				*効果音ルーチンの実質的なエントリ

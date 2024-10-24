@@ -16,8 +16,11 @@
 	.include	version.mac
 	.offset		0
 	.include	common.mac
+
+DO_NOT_DEFINE_WORK_LABEL: .equ 1
 	.offset		0
 	.include	zm_stat.mac
+
 	.text
 	.cpu	68000
 trn:		equ	32	*キャラクタ画面の縦の文字数
@@ -5478,7 +5481,7 @@ quit_zk_db:
 	rts
 
 work:	set	zsv_work
-	.include	fopen.has
+	.include	fopen.s
 
 chk_kanji:
 	tst.b	d0
@@ -5856,18 +5859,33 @@ Timbre:		dc.b	'TIMBRE:',0
 no_bank:	dc.b	'     ',0
 zp_key:		dc.b	'zp3_keyctrl',0
 key_tbl_db:	dc.b	$0e,$0b,$0e,$2e,$0e,$3e,$0e,$1b,$0e,$7a,$0e,$5a,$0e,$6a
+
+sp2a0: .macro str,nul
+  @esc:=0
+  .irpc c,str
+    .if (@esc==0).and.('&c'=='\')
+      @esc:=1
+    .elif (@esc==0).and.('&c'==' ')
+      .dc.b $a0
+    .else
+      .dc.b '&c'
+      @esc:=0
+    .endif
+  .endm
+  .dc.b nul
+.endm
 	*		           1         2         3         4         5         6         7         8         9     
 	*	         012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345
-common1_tbl:	dc.b	'METER:/KEY:TEMPO:PLAYTIME:::/:://()::',0
-common2_tbl:	dc.b	'AGOGIK:WAVE:VARIANT:REPEAT:',0
-common3_tbl:	dc.b	'FMOPM:ADPCM:MIDI1:MIDI2:MIDI3:MIDI4:SYSTEM:Z-MUSIC .',0
-common4_tbl:	dc.b	'FADER:FADER:FADER:FADER:FADER:FADER:TIMER:',0
-track_tbl1:	dc.b	'DEADCH.FADER:',0
-track_tbl2:	dc.b	'VOLUME:VELOCITY:DETUNE:PITCH:AFTER:HOLD: PAN:',0
-track_tbl3:	dc.b	'ARCC1:WAVE:VARIANT:CTRL:VIBRATO:WAVE:VARIANT:',0
-track_tbl4:	dc.b	'ARCC2:WAVE:VARIANT:CTRL:VELOCITY.SEQ:WAVE:VARIANT:',0
-track_tbl5:	dc.b	'ARCC3:WAVE:VARIANT:CTRL:',0
-track_tbl6:	dc.b	'ARCC4:WAVE:VARIANT:CTRL:',0
+common1_tbl:	sp2a0	' METER:  /     KEY:        TEMPO:       PLAYTIME:  :  :  /  :  :            /  /  (   )   :  :',0
+common2_tbl:	sp2a0	'AGOGIK:       WAVE:      VARIANT:         REPEAT:',0
+common3_tbl:	sp2a0	'FMOPM:     ADPCM:     MIDI1:     MIDI2:     MIDI3:     MIDI4:     SYSTEM:Z-MUSIC\  .',0
+common4_tbl:	sp2a0	'FADER:     FADER:     FADER:     FADER:     FADER:     FADER:     TIMER:                              ',0
+track_tbl1:	sp2a0	'                       DEAD                                                         CH.FADER:',0
+track_tbl2:	sp2a0	'                   VOLUME:    VELOCITY:    DETUNE:       PITCH:       AFTER:    HOLD:   \ PAN:',0
+track_tbl3:	sp2a0	'ARCC1:     WAVE:      VARIANT:       CTRL:          VIBRATO:       WAVE:      VARIANT:',0
+track_tbl4:	sp2a0	'ARCC2:     WAVE:      VARIANT:       CTRL:       VELOCITY.SEQ:     WAVE:      VARIANT:',0
+track_tbl5:	sp2a0	'ARCC3:     WAVE:      VARIANT:       CTRL:',0
+track_tbl6:	sp2a0	'ARCC4:     WAVE:      VARIANT:       CTRL:',0
 
 FMttlg0:	dc.b	' CLK-A:     CLK-B:    R14:      ',0
 FMttlg1:	dc.b	' NE:  NFRQ:                     ',0

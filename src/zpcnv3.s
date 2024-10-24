@@ -3,14 +3,14 @@
 *
 *	(C)  ZENJI SOFT
 *-------------------------------------------------------
-	.include	table.mac
 	.include	doscall.mac
 	.include	iocscall.mac
-	.include	Z_global.mac
-	.include	ZMID.MAC
-	.include	ZMD.MAC
-	.include	ZPCNV.MAC
-	.include	error.MAC
+	.include	table.mac
+	.include	z_global.mac
+	.include	zmid.mac
+	.include	zmd.mac
+	.include	zpcnv.mac
+	.include	error.mac
 
 	.list
 	.text
@@ -463,8 +463,8 @@ set_exfnedcd:
 	bne	find_end
 	bra	cmpl_lp
 
-	.include	pcmproc.has
-	.include	include.has
+	.include	pcmproc.s
+	.include	include.s
 
 do_wrt_cmn_b:			*共通コマンドエリアにbyte書き込み(共通コマンド時)
 	* < d0.b=data
@@ -722,7 +722,7 @@ get_cm_l:
 	move.b	(a2)+,d0
 	rts
 
-	.include	pcm_read.has
+	.include	pcm_read.s
 
 t_dat_ok:
 	moveq.l	#0,d0
@@ -1058,7 +1058,7 @@ PRINT	macro
 	DOS	_PRINT
 	endm
 
-	.include	prterrms.has
+	.include	prterrms.s
 
 t_offset_too_long:	m_err	OFFSET_TOO_LONG
 t_processing_size_too_large:	m_err	PROCESSING_SIZE_TOO_LARGE
@@ -1227,7 +1227,7 @@ case_erstk_enlg:			*メモリ領域拡大の場合
 	add.l	d1,a0
 	bra	store_ercd_
 
-.include	fopen.has
+.include	fopen.s
 
 read:				*CNFファイルの読み込み
 	* < d5.l=file handle

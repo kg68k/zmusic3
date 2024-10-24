@@ -4,7 +4,9 @@ ver_type:	equ	$40	*INTEGRAL VERSION
 
 version	macro
 	dc.b	' ',$f3,(v_code/16)+$30,$f3,'.',$f3,($0f.and.v_code)+$30,$f3,v_code_+$30
+	.ifndef NO_VERSION_SUFFIX
 	dc.b	$f3,'C'
+	.endif
 	endm
 
 test	macro

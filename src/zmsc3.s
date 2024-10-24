@@ -15,7 +15,7 @@
 	.include	z_global.mac
 	.include	table.mac
 	.include	label.mac
-	.include	macro.s
+	.include	macro.mac
 	.include	error.mac
 	.include	zmd.mac
 	.include	zmid.mac
@@ -5984,7 +5984,7 @@ clr_adpb?:
 @@:
 	rts
 
-	.include	pcm_read.has
+	.include	pcm_read.s
 
 register_zpd:				*ADPCMブロックデータの取り込み
 	*   cmd=$51
@@ -8463,7 +8463,7 @@ case_erstk_enlg:			*メモリ領域拡大の場合
 	add.l	d1,a0
 	bra	store_ercd_
 
-	.include	prterrms.has
+	.include	prterrms.s
 	.include	zmerrmes.s	*エラーメッセージ
 	.even
 
@@ -9937,7 +9937,7 @@ find_period:
 	bls	do_kkchs	*'.'はあっても拡張子がないケース
 	rts
 
-	.include	fopen.has
+	.include	fopen.s
 
 get_fsize2:			*ファイルサイズの偶数調整をする
 	* < d5.w=file handle
@@ -9978,7 +9978,7 @@ cache_flush:				*キャッシュのフラッシュ
 	rts
 
 	.include	work.s
-	.include	zmsc2.has
+	.include	zmsc_int.s
 
 bil_prta1:				*日本語対応
 	tst.b	errmes_lang-work(a6)	*0:英語か 1:日本語か
@@ -11725,4 +11725,6 @@ wrong_ver:			*バージョンが違う
 
 *end_of_prog:
 work_start0:
+	nop			*ZM302C_X.LZHのZMSC3.Xと同一にするための細工
+
 	end	exec

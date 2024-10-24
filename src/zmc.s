@@ -19,7 +19,7 @@
 	.include	zmcall.mac
 	.include	error.mac
 	.include	zclabel.mac
-	.include	zcmacro.s
+	.include	zcmacro.mac
 	.list
 	.text
 	.lall
@@ -2955,7 +2955,7 @@ gatetime_resolution:			*.GATE_RANGE(Qコマンドのレンジ設定)/非ZMD
 	bne	find_end
 	bra	cmpl_lp
 
-	.include	include.has
+	.include	include.s
 
 halt:					*停止
 *	bsr	check_relation_cmn	*コマンド関係チェック
@@ -3592,7 +3592,7 @@ call:					*.CALL(外部ZMS読み込み)
 	move.l	d0,z_cmn_flag(a1)
 	bra	cmpl_lp
 
-	.include	pcmproc.has
+	.include	pcmproc.s
 
 comment:				*.COMMENT(コメント文)
 *	bsr	check_relation_cmn	*コマンド関係チェック
@@ -8628,7 +8628,7 @@ reglist	reg	d2/a0-a1
 @@:
 	movem.l	(sp)+,reglist
 	rts
-	.include	zcerror.has
+	.include	zcerror.s
 
 cmd_@:				*＠コマンド系
 	bsr	skip_spc2
@@ -19976,7 +19976,7 @@ cache_flush:				*キャッシュのフラッシュ
 	movem.l	(sp)+,d0-d1
 	rts
 
-	.include	fopen.has
+	.include	fopen.s
 
 get_filedate:
 	clr.l	-(sp)
@@ -20767,7 +20767,7 @@ create_zmd:
 
 	DOS	_EXIT
 
-	include	disprslt.has
+	.include	disprslt.s
 
 read_source:			*SOURCE FILEの読み込み
 	* > a1.l=data address
@@ -20867,7 +20867,7 @@ PRINT	macro
 	DOS	_PRINT
 	endm
 
-	.include	prterrms.has
+	.include	prterrms.s
 	.include	zmerrmes.s	*エラーメッセージ
 	.even
 

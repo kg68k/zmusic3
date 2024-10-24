@@ -234,7 +234,10 @@ fo_ch_m0:	ds.b	16		*d1:master fader active flag	02
 fo_ch_m1:	ds.b	16		*d5:master fader move flag	20
 fo_ch_mr0:	ds.b	16		*d6:ch fader move flag		40
 fo_ch_mr1:	ds.b	16		*d7:処理したかどうか		80
+.ifndef DO_NOT_DEFINE_WORK_LABEL
 work:
+.endif
+work_:
 pt_ptr:		ds.l	1		*play_trk_tblの指標	必ずwork=pt_ptr
 pt_ptr_se:	ds.l	1		*play_trk_tbl_seの指標
 cf	ds.b	8	*オペレータのコネクションテーブルビット	!
@@ -246,5 +249,5 @@ opm_kon:	ds.b	8		*OPMレジスタ8番のワーク
 opm_nom:	ds.b	8		*オペレータマスク(OM)のNOT(&b11110000-&b11111111)
 _opm:		ds.b	256		*OPMのレジスタ・イメージ・ワーク
 opm_pmd:	dc.b	0
-opmreg:		equ	_opm-work
+opmreg:		equ	_opm-work_
 AF:		equ	$20

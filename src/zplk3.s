@@ -9,10 +9,16 @@
 *-----------------------------------------------
 
 	.cpu	68000
-	.include	IOCScall.mac
-	.include	DOScall.mac
-	.include	version.mac
+	.include	iocscall.mac
+	.include	doscall.mac
 	.include	z_global.mac
+
+	*ZM302C_X.LZHに入っているZPLK3.Rはバージョン3.02だが
+	*ZM302C_S.LZHのソースコードをアセンブルすると3.02Cに
+	*なってしまうのでごまかす
+	NO_VERSION_SUFFIX: .equ 1
+	.include	version.mac
+
 	.text
 
 smax:		equ	32		*記述できるソースファイルの最大数
@@ -1803,7 +1809,7 @@ cpv1111:
 	neg.w	d2
 	bra	abc
 
-	.include	fopen.has
+	.include	fopen.s
 
 read_data:			*ディスクからの読み込み
 	* < (a1)=file name

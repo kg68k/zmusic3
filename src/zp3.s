@@ -6,17 +6,20 @@
 *		PROGRAMMED  BY  Z.NISHIKAWA
 *
 *-------------------------------------------------------
-	.include	ZMD.mac
 	.include	iocscall.mac
 	.include	doscall.mac
-	.include	LzzConst.MAC
+	.include	LzzConst.mac
+	.include	zmd.mac
 	.include	zmcall.mac
 	.include	zmid.mac
 	.include	z_global.mac
 	.include	label.mac
 	.include	version.mac
+
+DO_NOT_DEFINE_WORK_LABEL: .equ 1
 	.offset	0
 	.include	zm_stat.mac
+
 	.offset		0
 	.include	common.mac
 	.text
@@ -2394,7 +2397,7 @@ trk_play:
 	Z_MUSIC	#ZM_PLAY
 	bra	exit
 
-.include	embeddmy.has
+.include	embeddmy.s
 
 init_zmsc:
 	bsr	chk_drv		*ドライバ常駐チェック
@@ -2630,7 +2633,7 @@ case_ZDF_clc:
 	beq	go_on_clc		*yes
 	bra	not_performance_data	*no:演奏データではない
 
-	.include	disprslt.has
+	.include	disprslt.s
 
 free_mem:
 	Z_MUSIC	#ZM_FREE_MEM
@@ -4164,7 +4167,7 @@ reglist	reg	a0-a1
 	rts
 
 work:	set	zp_work
-	.include	fopen.has
+	.include	fopen.s
 
 read:
 	* < d5.l=file handle
@@ -4815,4 +4818,4 @@ reg_buf:		ds.l	16
 zpdnm_buf:		ds.l	1
 mddnm_buf:		ds.l	1
 end_of_prog:
-	.end	program_start
+	.end
