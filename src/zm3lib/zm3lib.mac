@@ -1,0 +1,23 @@
+	.nlist
+	.include	zmcall.mac
+
+libver:		equ	$001
+
+param1		equ	4
+param2		equ	8
+param3		equ	12
+param4		equ	16
+param5		equ	20
+param6		equ	24
+param7		equ	28
+param8		equ	32
+param9		equ	36
+
+Z_MUSIC	macro	number
+	moveq.l	number,d0
+	trap	#3
+	endm
+
+MPCM_call	macro	number
+	trap	#1
+	endm

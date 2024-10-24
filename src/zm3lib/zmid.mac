@@ -1,0 +1,90 @@
+*---------------ファイルのヘッダID--------------------------------------------
+ZmuSiC0:	equ	$1a5a6d75	*$1a,'Zmu'
+ZmuSiC1:	equ	$53694300	*'SiC',00	最下位バイトの00にはバージョン番号
+ZPDV2_0:	equ	$105a6d41	*$10,'ZmA'
+ZPDV2_1:	equ	$6470436d	*'dpCm'
+ZPDV3_0:	equ	$1a5a6d61	*$1a,'Zma'
+ZPDV3_1:	equ	$4450634d	*'DPcM'
+SMFHED:		equ	'MThd'
+*ZMDBD0:		equ	$1a5a6d4d	*$10,'ZmM'
+*ZMDBD1:		equ	'dBdT'		*'dBdT'
+*---------------p_track_statの内容--------------------------------------------
+ID_PATTERN:	equ	-1
+ID_DEAD:	equ	$80	*(パターントラック)
+_ID_DEAD:	equ	7
+
+ID_SYNC:	equ	$40
+_ID_SYNC:	equ	6
+
+ID_REC:		equ	$20
+_ID_REC:	equ	5
+
+ID_PLAY_STOP:	equ	$02
+_ID_PLAY_STOP:	equ	1
+
+ID_SE:		equ	$10
+_ID_SE:		equ	4
+
+ID_END:		equ	$01	*値
+_ID_END:	equ	0	*ビット
+
+ID_ACTIVE:	equ	$00
+*---------------p_track_modeの内容--------------------------------------------
+ID_NO_KEYOFF:	equ	$80	*値
+_ID_NO_KEYOFF:	equ	7	*ビット
+
+ID_MIDI_MAP:	equ	$40	*将来対応予定
+_ID_MIDI_MAP:	equ	6
+
+*---------------get_mem用のメモリブロックID(.l)-------------------------------
+ID_ZMSC:	equ	'ZmSc'		*ZMUSICメモリID(ロック時は+$8000_0000)
+ID_LOCK:	equ	$8000_0000	*LOCK
+ID_ZPD:		equ	'ZＰD'		*ZPD
+ID_ZPD_TBL:	equ	'ZPDT'		*ZPDテーブル
+ID_ZMD:		equ	'ZＭD'		*ZMD
+ID_WAVE:	equ	'WAVE'		*波形メモリ
+ID_WAVE_TBL:	equ	'WAVT'		*波形メモリテーブル
+ID_ADPCM:	equ	'SPCM'		*ADPCM単音登録用(NOT ZPD)
+ID_CALC:	equ	'CALC'		*トータルステップタイム計算用ワークバッファ
+ID_TEMP:	equ	'TEMP'		*テンポラリ領域
+ID_APPLI:	equ	'APPL'		*外部アプリケーション解除登録ワーク
+ID_ERROR:	equ	'ＥRR'		*エラーストックバッファ
+ID_STARTUP:	equ	'STUP'		*スタートアップファイル
+ID_FMSND:	equ	'FMSD'		*FM音源音色バッファ
+ID_SYSTEM:	equ	'SＹS'		*システム関連ワーク
+ID_SMF:		equ	'SＭF'		*スタンダードMIDIファイル
+ID_ALL:		equ	0		*全てを対象とする(free_mem2時)
+*------------------fader_flagの内容-------------------------------------------
+ff_ch_fader:		equ	$40
+ff_master_fader:	equ	$80
+*_mstfd_mode:	equ	7	*fader_flag
+*mstfd_mode:	equ	$80	*fader_flag
+*_chfd_mode:	equ	6	*fader_flag
+*chfd_mode:	equ	$40	*fader_flag
+*-----------------------------------------------------------------------------
+*---------------各FADERの内部的ID---------------------------------------------
+MASTER_FADER_RESET:	equ	'M'
+CH_FADER_RESET:		equ	'C'
+*---------------COMPILER FUNCTIONのmode ID------------------------------------
+ZMC_ERL:	equ	32768	*15
+ZMC_V2:		equ	4096	*12
+ZMC_ERRMAX:	equ	0
+*---------------ZPD ID--------------------------------------------------------
+ZPD_V2:		equ	0
+ZPD_V3:		equ	1
+ZPD_PDX:	equ	2
+ID_8bitPCM:	equ	2
+ID_16bitPCM:	equ	1
+ID_adPCM:	equ	-1
+*---------------perform_flg ID------------------------------------------------
+pf_PLAY:	equ	0
+pf_STOP:	equ	1
+pf_CONT:	equ	2
+*---------------DEVICE ID-----------------------------------------------------
+DEV_FM:		equ	$0000
+DEV_ADPCM:	equ	$0001
+DEV_MIDI1:	equ	$8000
+DEV_MIDI2:	equ	$8001
+DEV_MIDI3:	equ	$8002
+DEV_MIDI4:	equ	$8003
+DEV_PATTERN:	equ	$7fff

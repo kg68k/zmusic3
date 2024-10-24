@@ -1,0 +1,113 @@
+*---------------波形メモリ管理テーブル----------------------------------------
+	.offset	0
+wave_start_addr:	ds.l	1	*波形の開始アドレス(.l)
+wave_end_addr:		ds.l	1	*波形の最終アドレス+2(.l)
+			ds.b	1	*リザーブ
+wave_loop_type:		ds.b	1	*ループタイプ(.w)
+wave_loop_start:	ds.l	1	*ループ開始アドレス(.l)
+wave_loop_end:		ds.l	1	*ループ最終アドレス+2(.l)
+wave_loop_time:		ds.l	1	*ループ回数
+			ds.l	1	*リザーブ
+			ds.b	1	*リザーブ
+wave_name_len:		ds.b	1	*波形名称文字列長(.w)
+wave_name_addr:		ds.l	1	*波形名称文字列格納アドレス(.l)
+*---------------ADPCM管理テーブル---------------------------------------------
+	.offset	0
+adt_type:		ds.b	1	*00:データタイプ:0=Empty,-1=ADPCM,1=16bitPCM
+adt_orig_key:		ds.b	1	*01:オリジナルキー:0-127
+adt_attribute:		ds.b	1	*02:属性(d0=0:Normal,1:ポインタコピー)
+			ds.b	1	*03:Reserved
+adt_addr:		ds.l	1	*04:データアドレス
+adt_size:		ds.l	1	*08:データサイズ
+adt_loop_start:		ds.l	1	*12:ループ開始ポイント
+adt_loop_end:		ds.l	1	*16:ループ終端ポイント
+adt_loop_time:		ds.l	1	*20:ループ回数
+			ds.l	1	*24:Reserved
+			ds.l	1	*28:Reserved
+adt_name:		ds.b	32	*32-63:コメント
+adt_len:		ds.b	0
+adt_name_len:		equ	32
+*---------------ZPD ファイル--------------------------------------------------
+*zpd_header:	ds.b	8	*$1a,'ZmaDPcM'
+*		dc.l	0	*reserved
+*		ds.l	1	*登録ノート数（0は無しを表す)
+	.offset	0
+zpd_note:	ds.w	1	*tone:0-32767  timbre:$8000+(0-32767)
+zpd_attr:
+zpd_type:	ds.b	1	*00:登録タイプ -1:ADPCM  1:16bitPCM  2:8bitPCM  0:no data
+zpd_orig_key:	ds.b	1	*01:オリジナルキー:0-127
+zpd_attribute:	ds.b	1	*02:属性(d0=0:Normal,1:ポインタコピー)
+		ds.b	1	*03:Reserved
+zpd_offset:	ds.l	1	*04:オフセットアドレス(16bitPCM登録ケースは必ず偶数値)
+zpd_size:	ds.l	1	*08:データ物理サイズ(16bitPCM登録ケースは必ず偶数値)
+zpd_loop_start:	ds.l	1	*12:ループ開始ポイント(16bitPCM登録ケースは必ず偶数値)
+zpd_loop_end:	ds.l	1	*16:ループ終了ポイント(16bitPCM登録ケースは必ず偶数値)
+zpd_loop_time:	ds.l	1	*20:ループ回数:0=∞,1～
+		ds.l	1	*24:Reserved
+		ds.l	1	*28:Reserved
+zpd_tone_name:	ds.b	32	*32:トーンネーム(最大32文字)
+
+*---------------送信バッファ--------------------------------------------------
+	.offset	0
+mbufsz:		equ	2048		*ソフト・MIDI送信バッファのサイズ
+m_buffer_start:
+m_buffer_sp:	ds.w	1
+m_buffer_ip:	ds.w	1
+m_len:		ds.w	1
+m_buffer:	ds.b	mbufsz
+m_buffer_end:
+*---------------受信バッファ--------------------------------------------------
+	.offset	0
+recbufsize:	equ	4096
+rec_buffer_start:
+rec_write_ptr:	ds.w	1		*書きだしポインタ
+rec_read_ptr:	ds.w	1		*読みだしポインタ
+rec_buf_err:	ds.b	1		*読みこぼしフラグ(nz:バッファ溢れ発生)
+					*(データ読みだし時に初期化すること)
+rec_buf_stat:	ds.b	1		*バッファ状態フラグ(nz:読みだし有効データあり)
+					*(データ読みだし時に初期化すること)
+rec_buffer:	ds.b	recbufsize	*バッファ先頭アドレス
+rec_buffer_end:
+*---------------MIDIチャンネルワーク------------------------------------------
+	.offset	0
+__c0:	ds.b	1	*.b	*program chg
+__d0:	ds.b	1	*.b	*ch pressure
+__e0:	ds.w	1	*.w	*pitch bender
+__b0:	ds.b	128	*128b	*ctrl chg
+chwklen:
+*---------------FM音源音色----------------------------------------------------
+	.offset	0
+fm_flag:	ds.w	1	*音色有効フラグ
+fm_LFRQ:	ds.b	1	*LFRQ
+fm_PMD:		ds.b	1	*PMD
+fm_AMD:		ds.b	1	*AMD
+fm_SYNC_OM_WF:	ds.b	1	*d0-d1:WF,d3-d6:OM,d7:SYNC
+fm_PAN_AF:	ds.b	1	*d0-d5:AF,d6-d7:PAN
+fm_PMS_AMS:	ds.b	1	*d0-d1:AMS,d4-d6:PMS
+fm_OP1_DT1_MUL:	ds.b	1	*OP1 d0-d3:MUL,d4-d7:DT1
+fm_OP3_DT1_MUL:	ds.b	1	*OP3 d0-d3:MUL,d4-d7:DT1
+fm_OP2_DT1_MUL:	ds.b	1	*OP2 d0-d3:MUL,d4-d7:DT1
+fm_OP4_DT1_MUL:	ds.b	1	*OP4 d0-d3:MUL,d4-d7:DT1
+fm_OP1_TL:	ds.b	1	*OP1 TL
+fm_OP3_TL:	ds.b	1	*OP3 TL
+fm_OP2_TL:	ds.b	1	*OP2 TL
+fm_OP4_TL:	ds.b	1	*OP4 TL
+fm_OP1_KS_AR:	ds.b	1	*OP1 d0-d4:AR,d6-d7:KS
+fm_OP3_KS_AR:	ds.b	1	*OP3 d0-d4:AR,d6-d7:KS
+fm_OP2_KS_AR:	ds.b	1	*OP2 d0-d4:AR,d6-d7:KS
+fm_OP4_KS_AR:	ds.b	1	*OP4 d0-d4:AR,d6-d7:KS
+fm_OP1_AME_1DR:	ds.b	1	*OP1 d0-d4:D1R,d7:AMS-EN
+fm_OP3_AME_1DR:	ds.b	1	*OP3 d0-d4:D1R,d7:AMS-EN
+fm_OP2_AME_1DR:	ds.b	1	*OP2 d0-d4:D1R,d7:AMS-EN
+fm_OP4_AME_1DR:	ds.b	1	*OP4 d0-d4:D1R,d7:AMS-EN
+fm_OP1_DT2_2DR:	ds.b	1	*OP1 d0-d4:D2R,d6-d7:DT2
+fm_OP3_DT2_2DR:	ds.b	1	*OP3 d0-d4:D2R,d6-d7:DT2
+fm_OP2_DT2_2DR:	ds.b	1	*OP2 d0-d4:D2R,d6-d7:DT2
+fm_OP4_DT2_2DR:	ds.b	1	*OP4 d0-d4:D2R,d6-d7:DT2
+fm_OP1_D1L_RR:	ds.b	1	*OP1 d0-d3:RR,d4-d7:D1L
+fm_OP3_D1L_RR:	ds.b	1	*OP3 d0-d3:RR,d4-d7:D1L
+fm_OP2_D1L_RR:	ds.b	1	*OP2 d0-d3:RR,d4-d7:D1L
+fm_OP4_D1L_RR:	ds.b	1	*OP4 d0-d3:RR,d4-d7:D1L
+fm_NAME:	ds.b	1	*音色名文字列(最大16文字)
+	.list
+	.text
