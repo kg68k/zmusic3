@@ -15,6 +15,31 @@ PCやネット上で扱いやすくするために、このリポジトリ内の
 * その他、同一ファイルを生成するための調整。
 
 
+## Manual
+
+* [まえがき](manual/zm00.txt)
+* [MEASURE &nbsp;1: イントロダクション](manual/zm01.txt)
+* [MEASURE &nbsp;2: ZMSC3.X/ZMC.Xのオプション・スイッチ](manual/zm02.txt)
+* [MEASURE &nbsp;3: X-BASIC用外部関数MUSICZ3.FNC](manual/zm03.txt)
+* [MEASURE &nbsp;4: ZMSコマンド](manual/zm04.txt)
+* [MEASURE &nbsp;5: MMLコマンド](manual/zm05.txt)
+* [MEASURE &nbsp;6: ZPCONV3.RとZPLK.R)](manual/zm06.txt)
+* [MEASURE &nbsp;7: ZP3.R](manual/zm07.txt)
+* [MEASURE &nbsp;8: ZVT.X](manual/zm08.txt)
+* [MEASURE &nbsp;9: スタンダードMIDIファイルとローランドエクスクルーシブ](manual/zm09.txt)
+* [MEASURE 10: ZMUSIC Ver.3.0のファンクションコール](manual/zm10.txt)
+* [MEASURE 11: エラー](manual/zm11.txt)
+* [MEASURE 12: ZMD/ZPDフォーマット](manual/zm12.txt)
+* [MEASURE 13: ワークエリアとワークビュアZSV.R](manual/zm13.txt)
+* [MEASURE 14: 効果音モードと外部プログラムとの同期](manual/zm14.txt)
+* [MEASURE 15: MPCM.X](manual/zm15.txt)
+* [MEASURE 16: C言語ライブラリ](manual/zm16.txt)
+* [用語解説](manual/glossary.txt)
+
+<!-- -->
+* 非公式情報: [既知の不具合](https://github.com/kg68k/x68.memo/blob/main/tool/bugs.md#z-music-ver302c)
+
+
 ## Build
 
 X680x0上でビルドする際には、ソースファイルのUTF-8からShift_JISへの変換が必要です。

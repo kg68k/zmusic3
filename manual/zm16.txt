@@ -1,0 +1,3001 @@
+
+	    ＭＥＡＳＵＲＥ１６
+
+	     C言語ライブラリ
+
+
+  ZMUSIC Ver.3.0用のＣ言語ライブラリに
+
+ついて解説します。
+
+
+
+
+
+
+
+１６．１．ZMUSIC Ver.3.0用Ｃ言語ライブラリの構成
+
+
+　ZMUSIC Ver.3.0用のＣ言語ライブラリは以下の３つのファイルで構成されている。
+
+	ZMSC3LIB.L	Ｃ言語用ライブラリ
+	ZMSC3LIB.A	Ｃ言語用ライブラリアーカイヴファイル
+	ZMSC3LIB.H	Ｃ言語用インクルードファイル
+	ZMSC3LIB.DEF	ＢＣ．Ｘ用ＤＥＦファイル
+
+
+１６．２．ＺＭＳＣ３ＬＩＢ．Ｈの利用法
+
+
+  自分のシステムの、インクルード・ファイルが格納してあるディレクトリに
+
+ZMSC3LIB.Hをコピーする。
+
+例
+	A>COPY ZMSC3LIB.H A:\INCLUDE
+
+  ZMSC3.XをＣ言語のプログラムから使いたい場合は、そのプログラムの冒頭に
+
+	#INCLUDE	<ZMSC3LIB.H>
+
+の１行をつける。
+
+
+１６．３．ＺＭＳＣ３ＬＩＢ関数一覧
+
+
+[注意]
+
+　備考欄の
+
+	setup[7]:Output Assign                  (0～4:Dry,Rev,Cho,Dir1,Dir2)
+
+といった表記は実際にsetup[7]に格納すべき値が0～4で、これに対応する
+
+音源上でのパラメータがDry,Rev,Cho,Dir1,Dir2ということを表す。
+
+　つまりこの例でいけば、0がDryに、1がRev、2がChoに対応するということ。
+*-----------------------------------------------------------------------------
+	int	zm_check_zmsc( void);
+
+機能	Z-MUSICの常駐状態を検査する
+
+引数	なし
+
+戻り値	-1:エラー(常駐していなかった)
+	$3x4x:バージョンID
+
+備考	バージョンIDはたとえばZMSC3.X Version 3.12が常駐していたならば
+	$3142が返ってくる。
+*-----------------------------------------------------------------------------
+	int	zm_get_zmlibver( void);
+
+機能	ライブラリのバージョンを返す
+
+引数	なし
+
+戻り値	$?.??:バージョンID
+
+備考	バージョンIDはたとえば0.01ならば$001が返ってくる。
+*-----------------------------------------------------------------------------
+	int	zm_init( int param);
+
+機能	Z-MUSICと音源の初期化を行う
+
+引数	int param:0(dummy)
+
+戻り値	Z-MUSICのバージョンID
+
+備考	paramは将来の拡張用で、現時点ではかならず0を設定する。
+	バージョンIDはたとえばバージョン3.21ならば $00003241となる。
+	4の部分は固定値。
+*-----------------------------------------------------------------------------
+	int	zm_assign( int device,int track);
+
+機能	チャンネルとトラックの割り付けを設定する
+
+引数	int device(上位16ビット):0=FM音源,1=ADPCM音源
+				 $8000=MIDI1,$8001=MIDI2
+				 $8002=MIDI3,$8003=MIDI4
+				 -1=カレントMIDI
+	int device(下位16ビット):チャンネル番号0-15
+	int track:トラック番号0-65534
+
+戻り値	0:正常終了
+	0以外:エラーコード
+
+備考	カレントMIDIはMIDIインターフェース番号を指定しない場合の
+	デフォルトとなるものでzm_current_midi_out()で設定する
+*-----------------------------------------------------------------------------
+	int	zm_compiler( int mode,int size,char *zms,char **result);
+
+機能	ZMSをコンパイルする
+
+引数	int mode:d0-d6:検出するエラーの最大値/0:∞,1-127
+		 d15:エラーテーブルリストを作成して出力するか(0:no,1:yes)
+	int size:ZMSサイズ
+	char *zms:ZMSが格納されているアドレス
+	char **result:コンパイラが出力したZMD/エラーリストのアドレスを
+		      格納する変数
+
+戻り値	0:正常終了(**resultにはZMDのアドレス)
+	0以外:コンパイルで発生したエラーの数(**resultにはエラーテーブルのアドレス)
+
+備考	・エラーが発生するとchar **resultにエラーテーブルのアドレスが
+	  代入される。char **resultはエラーリストを作成しない場合も必ず設定
+	  すること。
+	・エラーテーブルの構成に付いてはMEASURE11を参照のこと。
+	・char **resultに返された領域は使用後zm_init()などを実行すればクリア
+	  される。
+	・char *zmsとint sizeを共に0にするとコンパイラの常駐解除となる。
+	  通常は指定してはならない。
+	・コンパイラは外部組み込みのファンクションであるため、使用前には
+	  コンパイラの常駐を確認する必要がある。
+*-----------------------------------------------------------------------------
+	int	zm_vget( int timbre,int mode,char *buffer);
+
+機能	FM音源音色を取り出す
+
+引数	int timbre:音色番号(0-32767)
+	int mode:モード(0=OPMDRV.X互換,1=AL/FB分離方式)
+	char *buffer:音色データ格納バッファ
+
+戻り値	0:正常終了
+	0以外:エラーコード
+
+備考	char *bufferで表される音色データの書式は以下のとおり。
+
+	音色フォーマット(OPMDRV.X互換方式)
+	０:AF(ﾌｨｰﾄﾞﾊﾞｯｸ/ｱﾙｺﾞﾘｽﾞﾑ) (0～63)  
+	１:OM(ｽﾛｯﾄﾏｽｸ)            (0～15)  
+	２:WF(ｳｪｰｳﾞﾌｫｰﾑ)          (0～3)   
+	３:SYC(ｼﾝｸﾛ)              (0,1)    
+	４:SPD(ｽﾋﾟｰﾄﾞ)            (0～255) 
+	５:PMD                    (0～127) 
+	６:AMD                    (0～127) 
+	７:PMS                    (0～7)   
+	８:AMS                    (0～3)   
+	９:PAN                    (0～3)   
+	10:DUMMY
+	11(OP1),22(OP2),33(OP3),44(OP4):AR(ｱﾀｯｸﾚｰﾄ)        (0～31)
+	12(OP1),23(OP2),34(OP3),45(OP4):1DR(1stﾃﾞｨｹｲﾚｰﾄ)   (0～31)
+	13(OP1),24(OP2),35(OP3),46(OP4):2DR(2ndﾃﾞｨｹｲﾚｰﾄ)   (0～31)
+	14(OP1),25(OP2),36(OP3),47(OP4):RR(ﾘﾘｰｽﾚｰﾄ)        (0～15)
+	15(OP1),26(OP2),37(OP3),48(OP4):1DL(1stﾃﾞｨｹｲﾚﾍﾞﾙ)  (0～15)
+	16(OP1),27(OP2),38(OP3),49(OP4):TL(ﾄｰﾀﾙﾚﾍﾞﾙ)       (0～127)
+	17(OP1),28(OP2),39(OP3),50(OP4):KS(ｷｰｽｹｰﾘﾝｸﾞ)      (0～3)
+	18(OP1),29(OP2),40(OP3),51(OP4):MUL(ﾌｪｰｽﾞﾏﾙﾁﾌﾟﾗｲ)  (0～15)
+	19(OP1),30(OP2),41(OP3),52(OP4):DT1(ﾃﾞｨﾁｭｰﾝ1)      (0～7)
+	20(OP1),31(OP2),42(OP3),53(OP4):DT2(ﾃﾞｨﾁｭｰﾝ2)      (0～3)
+	21(OP1),32(OP2),43(OP3),54(OP4):AME(AMSｲﾈｰﾌﾞﾙ)     (0,1)
+
+	音色フォーマット(AL/FB分離方式)
+        00(OP1),11(OP2),22(OP3),33(OP4):AR(ｱﾀｯｸﾚｰﾄ)        (0～31)
+	01(OP1),12(OP2),23(OP3),34(OP4):1DR(1stﾃﾞｨｹｲﾚｰﾄ)   (0～31)
+	02(OP1),13(OP2),24(OP3),35(OP4):2DR(2ndﾃﾞｨｹｲﾚｰﾄ)   (0～31)
+	03(OP1),14(OP2),25(OP3),36(OP4):RR(ﾘﾘｰｽﾚｰﾄ)        (0～15)
+	04(OP1),15(OP2),26(OP3),37(OP4):1DL(1stﾃﾞｨｹｲﾚﾍﾞﾙ)  (0～15)
+	05(OP1),16(OP2),27(OP3),38(OP4):TL(ﾄｰﾀﾙﾚﾍﾞﾙ)       (0～127)
+	06(OP1),17(OP2),28(OP3),39(OP4):KS(ｷｰｽｹｰﾘﾝｸﾞ)      (0～3)
+	07(OP1),18(OP2),29(OP3),40(OP4):MUL(ﾌｪｰｽﾞﾏﾙﾁﾌﾟﾗｲ)  (0～15)
+	08(OP1),19(OP2),30(OP3),41(OP4):DT1(ﾃﾞｨﾁｭｰﾝ1)      (0～7)
+	09(OP1),20(OP2),31(OP3),42(OP4):DT2(ﾃﾞｨﾁｭｰﾝ2)      (0～3)
+	10(OP1),21(OP2),32(OP3),43(OP4):AME(AMSｲﾈｰﾌﾞﾙ)     (0,1)
+	44:AL(ｱﾙｺﾞﾘｽﾞﾑ)           (0～7)
+	45:FB(ﾌｨｰﾄﾞﾊﾞｯｸ)          (0～7)
+	46:OM(ｽﾛｯﾄﾏｽｸ)            (0～15)
+	47:PAN                    (0～3)
+	48:WF(ｳｪｰｳﾞﾌｫｰﾑ)          (0～3)
+	49:SYC(ｼﾝｸﾛ)              (0,1)
+	50:SPD(ｽﾋﾟｰﾄﾞ)            (0～255)
+	51:PMD                    (0～127)
+	52:AMD                    (0～127)
+	53:PMS                    (0～7)
+	54:AMS                    (0～3)
+*-----------------------------------------------------------------------------
+	int	zm_vset( int timbre,int mode,char *buffer);
+
+機能	FM音源音色を登録する
+
+引数	int timbre:音色番号(0-32767)
+	int mode:モード(0=OPMDRV.X互換,1=AL/FB分離方式)
+	char *buffer:音色データ格納バッファ
+
+戻り値	0:正常終了
+	0以外:エラーコード
+
+備考	音色フォーマットに付いてはzm_vget()とまったく同じ
+*-----------------------------------------------------------------------------
+	int	zm_tempo( int tempo,int mode );
+
+機能	テンポを設定する
+
+引数	int tempo:テンポの値(1分間の4分音符の数),-1テンポ取得のみを行う
+	int mode:0=ZMUSICに登録する(通常)
+		 -1=単なるテンポの変更でZMUSICには登録しない
+
+戻り値	設定前のテンポとタイマ値が戻ってくる
+	上位16ビット:タイマ値
+	下位16ビット:テンポ値
+
+備考	テンポ値の有効範囲は使用するテンポ源タイマの種類によって異なる。
+	TIMER-A:20～32767
+	TIMER-B:20～5000
+	YM3802:1～32767
+*-----------------------------------------------------------------------------
+	int	zm_set_timer_value( int timer,int mode );
+
+機能	テンポをタイマ値で設定する
+
+引数	int timer:タイマの値,-1タイマ値取得のみを行う
+	int mode:0=ZMUSICに登録する(通常)
+		 -1=単なるテンポの変更でZMUSICには登録しない
+
+戻り値	設定前のテンポとタイマ値が戻ってくる
+	上位16ビット:テンポ値
+	下位16ビット:タイマ値
+
+備考	テンポ値の有効範囲は使用するテンポ源タイマの種類によって異なる。
+	TIMER-A:0～1023
+	TIMER-B:0～255
+	YM3802:0～8191
+*-----------------------------------------------------------------------------
+	short	*zm_play( short	*track);
+
+機能	演奏開始制御
+
+引数	short *track:演奏を開始したいトラック番号の並び
+
+戻り値	演奏開始を行えなかったトラック番号の並び
+
+備考	short *track,戻り値共に
+	{ short track,short track,.....,short track,(short)-1}
+	という構成を取る。ただしトラック番号は0-65534の範囲
+*-----------------------------------------------------------------------------
+	void	zm_play_all( void );
+
+機能	全トラック演奏開始制御
+
+引数	なし
+
+戻り値	なし
+*-----------------------------------------------------------------------------
+	void	zm_play2( void );
+
+機能	演奏開始制御
+
+引数	なし
+
+戻り値	なし
+
+備考	現在ZMUSICの演奏データバッファに存在する演奏データをはじめから
+	(共通コマンドの実行も含めて)演奏する。
+*-----------------------------------------------------------------------------
+	void	zm_play_again( void );
+
+機能	演奏開始制御
+
+引数	なし
+
+戻り値	なし
+
+備考	前回行われたzm_play()を再び実行する
+*-----------------------------------------------------------------------------
+	void	zm_play_status_all_ch( int *channel_list );
+
+機能	全チャンネル演奏状態検査
+
+引数	int *channel_list:検査結果を格納するためのバッファ
+
+戻り値	なし
+
+備考	演奏状態であるチャンネルIDが*channel_listに格納される。
+	{(int)active_device,(int)active_device,...,(int)-1 }
+	のような構成を取る
+	バッファサイズは演奏している(トラック数+1)*4バイト必要。
+	なおチャンネルIDは
+	(上位16ビット):0=FM音源,1=ADPCM音源
+		       $8000=MIDI1,$8001=MIDI2
+		       $8002=MIDI3,$8003=MIDI4
+		       -1=カレントMIDI
+	(下位16ビット):チャンネル番号0-15
+	で表される。
+*-----------------------------------------------------------------------------
+	void	zm_play_status_all_tr( short *track_list );
+
+機能	全トラック演奏状態検査
+
+引数	short *track_list:検査結果を格納するためのバッファ
+
+戻り値	なし
+
+備考	演奏状態であるトラック番号(0-65534の範囲)が*track_listに格納される。
+	{(short)active_track,(short)active_track,...,(short)-1}
+	のような構成を取る
+	バッファサイズは演奏している(トラック数+1)*2バイト必要。
+*-----------------------------------------------------------------------------
+	int	zm_play_status_ch( int channel );
+
+機能	チャンネル演奏状態検査
+
+引数	int channel(上位16ビット):0=FM音源,1=ADPCM音源
+				 $8000=MIDI1,$8001=MIDI2
+				 $8002=MIDI3,$8003=MIDI4
+				 -1=カレントMIDI
+	int channel(下位16ビット):チャンネル番号0-15
+
+戻り値	0:演奏されていない
+	0以外:演奏されている
+*-----------------------------------------------------------------------------
+	int	zm_play_status_tr( int track );
+
+機能	トラック演奏状態検査
+
+引数	int track:検査対象トラック番号(0-65534)
+
+戻り値	0:演奏されていない
+	0以外:演奏されている
+*-----------------------------------------------------------------------------
+	short	*zm_stop( short	*track);
+
+機能	演奏停止制御
+
+引数	short *track:演奏を停止したいトラック番号の並び
+
+戻り値	演奏停止を行えなかったトラック番号の並び
+
+備考	short *track,戻り値共に
+	{ short track,short track,.....,short track,(short)-1}
+	という構成を取る。ただしトラック番号は0-65534の範囲
+*-----------------------------------------------------------------------------
+	void	zm_stop_all( void );
+
+機能	全トラック演奏停止制御
+
+引数	なし
+
+戻り値	なし
+*-----------------------------------------------------------------------------
+	short	*zm_cont( short	*track);
+
+機能	演奏再開制御
+
+引数	short *track:演奏を再開したいトラック番号の並び
+
+戻り値	演奏再開を行えなかったトラック番号の並び
+
+備考	short *track,戻り値共に
+	{ short track,short track,.....,short track,(short)-1}
+	という構成を取る。ただしトラック番号は0-65534の範囲
+*-----------------------------------------------------------------------------
+	void	zm_cont_all( void );
+
+機能	全トラック演奏再開制御
+
+引数	なし
+
+戻り値	なし
+*-----------------------------------------------------------------------------
+	char	*zm_atoi( int track );
+
+機能	演奏トラックデータの先頭アドレス取得
+
+引数	int track:トラック番号0-65534
+
+戻り値	0:エラー
+	0以外:指定演奏トラックの先頭アドレス
+*-----------------------------------------------------------------------------
+	MSTRCLK	*zm_set_master_clock( int side,MSTRCLK *mstrclk );
+
+機能	拍子,メトロノーム速度,調号,全音符の絶対音長の設定
+
+引数	int side:0=音楽演奏,1=効果音
+	MSTRCLK mstrclk:拍子,メトロノーム速度,調号,全音符の絶対音長を
+			格納した構造体のアドレス。
+			0ならば問い合わせのみ
+
+戻り値	MSTRCLK mstrclk=0とした時のみ、その時点の設定値を格納したMSTRCLK構造体の
+	アドレスが返る。それ以外は戻り値不定。
+
+備考	side=0で通常音楽演奏側の設定、side=1で効果音演奏側の設定となる。
+	MSTRCLK構造体
+	struct	MSTRCLK	{
+		char	meter_n;	/*拍子分子(1-255)*/
+		char	meter_d;	/*拍子分母(1-255)*/
+		char	metronome;	/*音楽的音長(1-255)*/
+		char	dummy;
+		char	key1;		/*調号1(0:C,負値:♭の数,正値:♯の数)*/
+		char	key2;		/*調号2(Major=0,Minor=1)*/
+		short	master_clock;	/*全音符の絶対音長(1-65535)*/
+	};
+*-----------------------------------------------------------------------------
+	int	zm_play_zmd( int size,char *zmd );
+
+機能	ZMDの演奏
+
+引数	int size:ZMDのサイズ(ヘッダ$1A,'ZmuSiC',$30の分は含まれていても
+		 含まれていなくてもどちらでもよい)
+		 0を設定するとZMUSIC本体のバッファへ演奏データを
+		 取り込む動作を省略する。
+	char *zmd:ZMDの格納バッファ(ヘッダを含まず)
+
+戻り値	0:正常終了
+	0以外:エラーコード
+
+備考	int size=0とするには、char *zmdで表されるアドレスからの領域の存在が
+	演奏中も保証されることを前提とする。
+*-----------------------------------------------------------------------------
+	int	zm_play_zmd_se( char *zmd );
+
+機能	ZMDを効果音として演奏する
+
+引数	char *zmd:ZMDの格納バッファ(ヘッダを含まず)
+
+戻り値	0:正常終了
+	0以外:エラーコード
+
+備考	char *zmdで表されるアドレスからの領域の存在は、演奏中も
+	保証されなければならない。
+*-----------------------------------------------------------------------------
+	int	zm_se_play( char *zmd );
+
+機能	効果音ZMDの演奏
+
+引数	char *zmd:ZMDの格納バッファ(トラック・チャンネル情報テーブルから)
+
+戻り値	0:正常終了
+	0以外:エラーコード
+
+備考	char *zmdで表されるアドレスからの領域の存在は、演奏中も
+	保証されなければならない。
+	トラック・チャンネル情報テーブルに付いてはMEASURE12を参照。
+*-----------------------------------------------------------------------------
+	int	zm_se_adpcm1(char data_type,char volume,char frq,char pan,
+			int size,short priority,short ch,char *adpcm);
+
+機能	(AD)PCM効果音の演奏
+
+引数	char data_type:データタイプ(-1:ADPCM,1:16bitPCM,2:8bitPCM)
+	char volume:音量(0-127,64:標準)
+	char frq:再生周波数(0:3.9kHz 1:5.2kHz 2:7.8kHz 3:10.4kHz 4:15.6kHz)
+	char pan:パンポット(0-3 / $80+0-127)
+	int size:再生するADPCMのデータサイズ
+	short priority:効果音優先度(0-255/0が最も低い)
+	short ch:再生チャンネル(0-15)
+	char *adpcm:(AD)PCMデータアドレス
+
+戻り値	0:正常終了
+	0以外:エラーコード
+
+備考	char *adpcmで表されるアドレスからの領域の存在は、演奏中も
+	保証されなければならない。
+*-----------------------------------------------------------------------------
+	int	zm_se_adpcm2(char data_type,char volume,char frq,char pan,
+			int data_number,short priority,short ch);
+
+機能	ZMUSICに登録してある(AD)PCM効果音の演奏
+
+引数	char data_type:データタイプ(-1:ADPCM,1:16bitPCM,2:8bitPCM)
+	char volume:音量(0-127,64:標準)
+	char frq:再生周波数(0:3.9kHz 1:5.2kHz 2:7.8kHz 3:10.4kHz 4:15.6kHz)
+	char pan:パンポット(0-3 / $80+0-127)
+	int data_number:PCMデータ番号(d15が1ならば音色番号($8000+0-32767),
+				      0ならばノート番号(0-32767)指定)
+	short priority:効果音優先度(0-255/0が最も低い)
+	short ch:再生チャンネル(0-15)
+
+戻り値	0:正常終了
+	0以外:エラーコード
+*-----------------------------------------------------------------------------
+	void	zm_intercept_play( int mode );
+
+機能	演奏開始制御の遮断制御
+
+引数	int mode:-1 演奏開始の遮断を行う
+		 0  演奏開始の遮断の解除と演奏開始
+		 1  演奏開始の遮断の解除
+
+戻り値	なし
+
+備考	演奏開始の遮断を設定するとzm_play()などの演奏開始命令を実行しても
+	演奏が開始されなくなる。
+*-----------------------------------------------------------------------------
+	int	zm_current_midi_in( int port );
+
+機能	カレントMIDI-IN端子の設定
+
+引数	int port:MIDIポートの番号(0-3)
+		 -1では問い合わせのみを行う
+
+戻り値	以前のカレントMIDI-INのポート番号(0-3)
+*-----------------------------------------------------------------------------
+	int	zm_current_midi_out( int port );
+
+機能	カレントMIDI-OUT端子の設定
+
+引数	int port:MIDIポートの番号(0-3)
+		 -1では問い合わせのみを行う
+
+戻り値	以前のカレントMIDI-OUTのポート番号(0-3)
+*-----------------------------------------------------------------------------
+	int	zm_midi_transmission( int port,int size,char *midi );
+
+機能	MIDIデータメッセージの送信
+
+引数	int port:MIDIポートの番号(0-3)
+		 -1はカレントMIDI-OUTを使用
+	int size:送信データサイズ
+		 0とした場合はテキスト型MIDIデータ(MDD)とみなして送信する
+		 0以外ではバイナリデータとみなして送信する
+	char *midi:送信するMIDIデータを格納したデータバッファ
+
+戻り値	送信データの8ビット加算合計値
+
+備考	MDDとはZMUSIC Ver.2.0相当でMIDIファイルの標準としていたフォーマット。
+	$0d,$0aで始まり16進数のテキストでMIDIメッセージを記述したファイル。
+	送信データサイズを指定した場合はバイナリのMIDIメッセージと
+	みなして送信される。ZMUSICが扱えるバイナリのMIDIメッセージには
+	スタンダードMIDIファイル(FORMAT0)と単なるバイナリデータ列の
+	2種類がありこのデータの種類の判別はZMUSIC Ver.3.0が自動で行う。
+*-----------------------------------------------------------------------------
+	void	zm_exclusive( int port,int size,int id,char *midi );
+
+機能	エクスクルーシブメッセージの送信
+
+引数	int port:MIDIポートの番号(0-3)
+		 -1はカレントMIDI-OUTを使用
+	int size:送信データサイズ
+	int id:d0-d7=MODEL ID(0-127)
+	      d8-d15=DEVICE ID(0-127)
+	     d16-d23=MAKER ID(0-127) 
+	char *midi:送信するMIDIデータを格納したデータバッファ
+
+戻り値	なし
+
+備考	エクスクルーシブヘッダの$F0とEOXの$F7は自動送信される。
+	DEVICE IDを-1とすると以前設定したものが選択される。最初の使用時に
+	省略した場合はドライバ内のデフォルト値が選択される。
+	MAKER IDをRoland($41)とした場合はデータ列をローランド・エクスクルーシブ
+	フォーマットのデータとみなし、コマンドメッセージ(DT2:$12)やチェックサム
+	バイト付きで送信する。
+	MAKER IDをYAMAHA($43)とした場合はデータ列をヤマハ・エクスクルーシブ
+	フォーマットのデータとみなし、データ長やチェックサムバイト付きで送信す
+	る。
+*-----------------------------------------------------------------------------
+	int	zm_set_eox_wait( int port,int wait );
+
+機能	EOX送信後のウェイトを設定する
+
+引数	int port:MIDIポートの番号(0-2)
+		 -1はカレントMIDI-OUTを使用
+	int wait:0-65535
+
+戻り値	それまでのウェイト値
+*-----------------------------------------------------------------------------
+	int	zm_midi_inp1( int port,int mode );
+
+機能	MIDIデータの1バイト入力
+
+引数	int port:MIDIポートの番号(0-3)
+		 -1はカレントMIDI-OUTを使用
+	int mode:0 1回受信を試みてすぐ帰還
+		 1 受信するまで無限ループ
+
+戻り値	d31=1	読みこぼし発生	0:正常読みだし
+	d15=1	データ無し	0:データ有り
+	d0-d7	読みだしデータ
+*-----------------------------------------------------------------------------
+	int	zm_midi_out1( int port,char data );
+
+機能	MIDIデータの1バイト出力
+
+引数	int port:MIDIポートの番号(0-3)
+		 -1はカレントMIDI-OUTを使用
+	char data:送信データ(0-255)
+
+戻り値	0:正常終了
+	0以外:エラーコード
+*-----------------------------------------------------------------------------
+	int	zm_midi_rec( int port );
+
+機能	MIDIデータのレコーディング開始
+
+引数	int port:MIDIポートの番号(0-3)
+		 -1はカレントMIDI-OUTを使用
+
+戻り値	0:正常終了
+	0以外:エラーコード
+*-----------------------------------------------------------------------------
+	int	zm_midi_rec_end( int port );
+
+機能	MIDIデータのレコーディング終了
+
+引数	int port:MIDIポートの番号(0-3)
+		 -1はカレントMIDI-OUTを使用
+
+戻り値	0:正常終了
+	0以外:エラーコード
+*-----------------------------------------------------------------------------
+	int	zm_gs_reset( int port,int id );
+
+機能	GS音源の初期化
+
+引数	int port:MIDIポートの番号(0-3)
+		 -1はカレントMIDI-OUTを使用
+	int id:DEVICE ID(0-127,-1:以前の値を使用)
+
+戻り値	0:正常終了
+	0以外:エラーコード
+*-----------------------------------------------------------------------------
+	int	zm_gs_partial_reserve( int port,int id,char *rsv );
+
+機能	GS音源のパーシャルリザーブ
+
+引数	int port:MIDIポートの番号(0-3)
+		 -1はカレントMIDI-OUTを使用
+	int id:DEVICE ID(0-127,-1:以前の値を使用)
+	char *rsv:パート1～パート16までのパーシャルリザーブ値が
+		  格納されているアドレス
+
+戻り値	0:正常終了
+	0以外:エラーコード
+
+備考    char *rsvからの領域にパーシャルリザーブ値を16パート分格納しておく。
+	また、合計が楽器の最大同時発声数以下にならなければならない。
+	rsv[0]＝パート1,rsv[1]＝パート2…,rsv[15]＝パート16というふうに対応する。
+	なお、パート10はリズムパートに対応する。
+	idを-1とすると以前設定したものが選択される。最初の使用時に
+	省略した場合はZMUSIC内のデフォルト値$10が選択される。
+*-----------------------------------------------------------------------------
+	int	zm_gs_reverb( int port,int size,int id,char *rvb );
+
+機能	GS音源のリバーブ・パラメータの設定
+
+引数	int port:MIDIポートの番号(0-3)
+		 -1はカレントMIDI-OUTを使用
+	int size:リバーブパラメータ・データサイズ(1-7)
+	int id:DEVICE ID(0-127,-1:以前の値を使用)
+	char *rvb:リバーブパラメータ格納バッファ
+
+戻り値	0:正常終了
+	0以外:エラーコード
+
+備考    char *rvbからの領域にリバーブパラメータを記述しておく。sizeは7以内で、
+	指定したsize個分のパラメータがGS音源へ送信される。
+	idを-1とすると以前設定したものが選択される。最初の使用時に
+	省略した場合はZMUSIC内のデフォルト値$10が選択される
+
+	rvb[0]:REVERB MACRO 00:Room1,01:Room2,02:Room3,03:Hall1,04:Hall2
+			    05:Plate,06:Delay,07:Panning Delay(FB)
+	rvb[1]:REVERB CHARACTER			($00～$07)
+	rvb[2]:REVERB PRE-LPF			($00～$07)
+	rvb[3]:REVERB LEVEL			($00～$7F)
+	rvb[4]:REVERB TIME			($00～$7F)
+	rvb[5]:REVERB DELAY FEEDBACK		($00～$7F)
+	rvb[6]:REVERB SEND LEVEL TO CHORUS	($00～$7F)
+	(SC55マニュアルp79参照)
+*-----------------------------------------------------------------------------
+	int	zm_gs_chorus( int port,int size,int id,char *cho );
+
+機能	GS音源のコーラス・パラメータの設定
+
+引数	int port:MIDIポートの番号(0-3)
+		 -1はカレントMIDI-OUTを使用
+	int size:コーラスパラメータ・データサイズ(1-8)
+	int id:DEVICE ID(0-127,-1:以前の値を使用)
+	char *cho:コーラスパラメータ格納バッファ
+
+戻り値	0:正常終了
+	0以外:エラーコード
+
+備考    char *choからの領域にコーラスパラメータを記述しておく。sizeは8以内で
+	指定したsize個分のパラメータがGS音源へ送信される。
+	idを-1とすると以前設定したものが選択される。最初の使用時に
+	省略した場合はZMUSIC内のデフォルト値$10が選択される。
+
+	cho[0]:CHORUS MACRO 00:Chorus1,01:Chorus2,02:Chorus3,03:Chorus4
+			    04:Feedback Chorus,05:Flanger,06:Short Delay
+			    07:Short Delay(FB)
+	cho[1]:CHORUS PRE-LPF			($00～$07)
+	cho[2]:CHORUS LEVEL			($00～$7F)
+	cho[3]:CHORUS FEEDBACK			($00～$7F)
+	cho[4]:CHORUS DELAY			($00～$7F)
+	cho[5]:CHORUS RATE			($00～$7F)
+	cho[6]:CHORUS DEPTH			($00～$7F)
+	cho[7]:CHORUS SEND LEVEL TO REVERB	($00～$7F)
+	(SC55マニュアルp79参照)
+*-----------------------------------------------------------------------------
+	int	zm_gs_part_parameter( int port,int size,int pt_id,char *param );
+
+機能	GS音源のパート・パラメータの設定
+
+引数	int port:MIDIポートの番号(0-3)
+		 -1はカレントMIDI-OUTを使用
+	int size:パートパラメータ・データサイズ(1-119)
+	int pt_id:d0-d15=DEVICE ID(0-127,-1:以前の値を使用)
+	          d16-d31=PART NUMBER(1-16)
+	char *param:パートパラメータ格納バッファ
+
+戻り値	0:正常終了
+	0以外:エラーコード
+
+備考    char *paramからの領域にパートパラメータを記述しておく。sizeは119以内で
+	指定したsize個分のパラメータがGS音源へ送信される。
+	pt_idのd0-d15を-1とすると以前設定したものが選択される。最初の使用時に
+	省略した場合はZMUSIC内のデフォルト値$10が選択される。
+
+	param[0]:Rx CHANNEL                 (1～16,17＝OFF)
+	param[1]:Rx PITCH BEND              (0～1:OFF/ON)
+	param[2]:Rx CH PRESSURE(CAf)        (0～1:OFF/ON)
+	param[3]:Rx PROGRAM CHANGE          (0～1:OFF/ON)
+	param[4]:Rx CONTROL CHANGE          (0～1:OFF/ON)
+	param[5]:Rx POLY PRESSURE(PAf)      (0～1:OFF/ON)
+	param[6]:Rx NOTE MESSAGE            (0～1:OFF/ON)
+	param[7]:Rx RPN                     (0～1:OFF/ON)
+	param[8]:Rx NRPN                    (0～1:OFF/ON)
+	param[9]:Rx MODURATION              (0～1:OFF/ON)
+	param[10]:Rx VOLUME                  (0～1:OFF/ON)
+	param[11]:Rx PANPOT                  (0～1:OFF/ON)
+	param[12]:Rx EXPRESSION              (0～1:OFF/ON)
+	param[13]:Rx HOLD1                   (0～1:OFF/ON)
+	param[14]:Rx PORTAMENTO              (0～1:OFF/ON)
+	param[15]:Rx SOSTENUTO               (0～1:OFF/ON)
+	param[16]:Rx SOFT                    (0～1:OFF/ON)
+	param[17]:MONO/POLY MODE             (0～1:MONO/POLY)
+	param[18]:ASSIGN MODE                (0:SINGLE,1:LIMITED-MULTI,2:FULL-MULTI)
+	param[19]:USE FOR RHYTHM PART        (0:OFF,1:MAP1,2:MAP2)
+	param[20]:PITCH KEY SHIFT            ($28～$58:－24～＋24[semitone])
+	param[21]:PITCH OFFSET FINE(upper)   ($08～$F8:－12.0～＋12.0[Hz])
+	param[22]:PITCH OFFSET FINE(lower)         〃
+	param[23]:PART LEVEL                 (0～127)
+	param[24]:VELOCITY SENSE DEPTH       (0～127)
+	param[25]:VELOCITY SENSE OFFSET      (0～127)
+	param[26]:PART PANPOT                (0:RANDOM,01(LEFT)～64～127(RIGHT))
+	param[27]:KEY RANGE LOW              (0～127:C-1～G9)
+	param[28]:KEY RANGE HIGH             (0～127:C-1～G9)
+	param[29]:CC1 CONTROL NUMBER         (0～127)
+	param[30]:CC2 CONTROL NUMBER         (0～127)
+	param[31]:CHORUS SEND DEPTH          (0～127)
+	param[32]:REVERB SEND DEPTH          (0～127)
+
+	param[33]:Vibrato rate               ($0E～$72:－50～＋50)
+	param[34]:Vibrato depth              ($0E～$72:－50～＋50)
+	param[35]:TVF cutoff freq.           ($0E～$50:－50～＋16)
+	param[36]:TVF resonance              ($0E～$72:－50～＋50)
+	param[37]:TVF&TVA Env.attack         ($0E～$72:－50～＋50)
+	param[38]:TVF&TVA Env.decay          ($0E～$72:－50～＋50)
+	param[39]:TVF&TVA Env.release        ($0E～$72:－50～＋50)
+	param[40]:Vibrato delay              ($0E～$72:－50～＋50)
+
+	param[41]:SCALE TUNING C		   ($00～$7F:－64～＋63[cent])
+	param[42]:SCALE TUNING C#		   ($00～$7F:－64～＋63[cent])
+	param[43]:SCALE TUNING D		   ($00～$7F:－64～＋63[cent])
+	param[44]:SCALE TUNING D#		   ($00～$7F:－64～＋63[cent])
+	param[45]:SCALE TUNING E		   ($00～$7F:－64～＋63[cent])
+	param[46]:SCALE TUNING F		   ($00～$7F:－64～＋63[cent])
+	param[47]:SCALE TUNING F#		   ($00～$7F:－64～＋63[cent])
+	param[48]:SCALE TUNING G		   ($00～$7F:－64～＋63[cent])
+	param[49]:SCALE TUNING G#		   ($00～$7F:－64～＋63[cent])
+	param[50]:SCALE TUNING A		   ($00～$7F:－64～＋63[cent])
+	param[51]:SCALE TUNING A#		   ($00～$7F:－64～＋63[cent])
+	param[52]:SCALE TUNING B		   ($00～$7F:－64～＋63[cent])
+
+	param[53]:MOD PITCH CONTROL	   ($28～$58:－24～＋24[semitone])
+	param[54]:MOD TVF CUTOFF CONTROL	   ($00～$7F:－9600～＋9600[CENT])
+	param[55]:MOD AMPLITUDE CONTROL	   ($00～$7F:－100.0～＋100.0[%])
+	param[56]:MOD LFO1 RATE CONTROL	   ($00～$7F:－10.0～＋10.0[Hz])
+	param[57]:MOD LFO1 PITCH DEPTH	   ($00～$7F:0～600[cent])
+	param[58]:MOD LFO1 TVF DEPTH	   ($00～$7F:0～2400[cent])
+	param[59]:MOD LFO1 TVA DEPTH	   ($00～$7F:0～100.0[%])
+	param[60]:MOD LFO2 RATE CONTROL	   ($00～$7F:－10.0～＋10.0[Hz])
+	param[61]:MOD LFO2 PITCH DEPTH	   ($00～$7F:0～600[cent])
+	param[62]:MOD LFO2 TVF DEPTH	   ($00～$7F:0～2400[cent])
+	param[63]:MOD LFO2 TVA DEPTH	   ($00～$7F:0～100.0[%])
+
+	param[64]:BEND PITCH CONTROL	   ($28～$58:－24～＋24[semitone])
+	param[65]:BEND TVF CUTOFF CONTROL	   ($00～$7F:－9600～＋9600[CENT])
+	param[66]:BEND AMPLITUDE CONTROL	   ($00～$7F:－100.0～＋100.0[%])
+	param[67]:BEND LFO1 RATE CONTROL	   ($00～$7F:－10.0～＋10.0[Hz])
+	param[68]:BEND LFO1 PITCH DEPTH	   ($00～$7F:0～600[cent])
+	param[69]:BEND LFO1 TVF DEPTH	   ($00～$7F:0～2400[cent])
+	param[70]:BEND LFO1 TVA DEPTH	   ($00～$7F:0～100.0[%])
+	param[71]:BEND LFO2 RATE CONTROL	   ($00～$7F:－10.0～＋10.0[Hz])
+	param[72]:BEND LFO2 PITCH DEPTH	   ($00～$7F:0～600[cent])
+	param[73]:BEND LFO2 TVF DEPTH	   ($00～$7F:0～2400[cent])
+	param[74]:BEND LFO2 TVA DEPTH	   ($00～$7F:0～100.0[%])
+
+	param[75]:CAf PITCH CONTROL	   ($28～$58:－24～＋24[semitone])
+	param[76]:CAf TVF CUTOFF CONTROL	   ($00～$7F:－9600～＋9600[CENT])
+	param[77]:CAf AMPLITUDE CONTROL	   ($00～$7F:－100.0～＋100.0[%])
+	param[78]:CAf LFO1 RATE CONTROL	   ($00～$7F:－10.0～＋10.0[Hz])
+	param[79]:CAf LFO1 PITCH DEPTH	   ($00～$7F:0～600[cent])
+	param[80]:CAf LFO1 TVF DEPTH	   ($00～$7F:0～2400[cent])
+	param[81]:CAf LFO1 TVA DEPTH	   ($00～$7F:0～100.0[%])
+	param[82]:CAf LFO2 RATE CONTROL	   ($00～$7F:－10.0～＋10.0[Hz])
+	param[83]:CAf LFO2 PITCH DEPTH	   ($00～$7F:0～600[cent])
+	param[84]:CAf LFO2 TVF DEPTH	   ($00～$7F:0～2400[cent])
+	param[85]:CAf LFO2 TVA DEPTH	   ($00～$7F:0～100.0[%])
+
+	param[86]:PAf PITCH CONTROL	   ($28～$58:－24～＋24[semitone])
+	param[87]:PAf TVF CUTOFF CONTROL	   ($00～$7F:－9600～＋9600[CENT])
+	param[88]:PAf AMPLITUDE CONTROL	   ($00～$7F:－100.0～＋100.0[%])
+	param[89]:PAf LFO1 RATE CONTROL	   ($00～$7F:－10.0～＋10.0[Hz])
+	param[90]:PAf LFO1 PITCH DEPTH	   ($00～$7F:0～600[cent])
+	param[91]:PAf LFO1 TVF DEPTH	   ($00～$7F:0～2400[cent])
+	param[92]:PAf LFO1 TVA DEPTH	   ($00～$7F:0～100.0[%])
+	param[93]:PAf LFO2 RATE CONTROL	   ($00～$7F:－10.0～＋10.0[Hz])
+	param[94]:PAf LFO2 PITCH DEPTH	   ($00～$7F:0～600[cent])
+	param[95]:PAf LFO2 TVF DEPTH	   ($00～$7F:0～2400[cent])
+	param[96]:PAf LFO2 TVA DEPTH	   ($00～$7F:0～100.0[%])
+
+	param[97]:CC1 PITCH CONTROL	   ($28～$58:－24～＋24[semitone])
+	param[98]:CC1 TVF CUTOFF CONTROL	   ($00～$7F:－9600～＋9600[CENT])
+	param[99]:CC1 AMPLITUDE CONTROL	   ($00～$7F:－100.0～＋100.0[%])
+       param[100]:CC1 LFO1 RATE CONTROL	   ($00～$7F:－10.0～＋10.0[Hz])
+       param[101]:CC1 LFO1 PITCH DEPTH	   ($00～$7F:0～600[cent])
+       param[102]:CC1 LFO1 TVF DEPTH	   ($00～$7F:0～2400[cent])
+       param[103]:CC1 LFO1 TVA DEPTH	   ($00～$7F:0～100.0[%])
+       param[104]:CC1 LFO2 RATE CONTROL	   ($00～$7F:－10.0～＋10.0[Hz])
+       param[105]:CC1 LFO2 PITCH DEPTH	   ($00～$7F:0～600[cent])
+       param[106]:CC1 LFO2 TVF DEPTH	   ($00～$7F:0～2400[cent])
+       param[107]:CC1 LFO2 TVA DEPTH	   ($00～$7F:0～100.0[%])
+
+       param[108]:CC2 PITCH CONTROL	   ($28～$58:－24～＋24[semitone])
+       param[109]:CC2 TVF CUTOFF CONTROL	   ($00～$7F:－9600～＋9600[CENT])
+       param[110]:CC2 AMPLITUDE CONTROL	   ($00～$7F:－100.0～＋100.0[%])
+       param[111]:CC2 LFO1 RATE CONTROL	   ($00～$7F:－10.0～＋10.0[Hz])
+       param[112]:CC2 LFO1 PITCH DEPTH	   ($00～$7F:0～600[cent])
+       param[113]:CC2 LFO1 TVF DEPTH	   ($00～$7F:0～2400[cent])
+       param[114]:CC2 LFO1 TVA DEPTH	   ($00～$7F:0～100.0[%])
+       param[115]:CC2 LFO2 RATE CONTROL	   ($00～$7F:－10.0～＋10.0[Hz])
+       param[116]:CC2 LFO2 PITCH DEPTH	   ($00～$7F:0～600[cent])
+       param[117]:CC2 LFO2 TVF DEPTH	   ($00～$7F:0～2400[cent])
+       param[118]:CC2 LFO2 TVA DEPTH	   ($00～$7F:0～100.0[%])
+       (SC55のマニュアルp75,p79～p80参照)
+*-----------------------------------------------------------------------------
+	int	zm_gs_drum_setup( int port,int size,int dr_id,char *param );
+
+機能	GS音源のドラム・セットアップ設定
+
+引数	int port:MIDIポートの番号(0-3)
+		 -1はカレントMIDI-OUTを使用
+	int size:ドラム・セットアップ・パラメータ・データサイズ(1-8)
+	int dr_id:d0-d15=DEVICE ID(0-127,-1:以前の値を使用)
+	          d16-d23=NOTE NUMBER(0-127)
+	          d24-d31=MAP NUMBER(0-1)
+	char *param:ドラム・セットアップ・パラメータ格納バッファ
+
+戻り値	0:正常終了
+	0以外:エラーコード
+
+備考    char *paramからの領域にドラム・セットアップ・パラメータを記述しておく。
+	sizeは8以内で指定したsize個分のパラメータがGS音源へ送信される。
+	idを-1とすると以前設定したものが選択される。最初の使用時に
+	省略した場合はZMUSIC内のデフォルト値$10が選択される。
+
+	param[0]:PLAY KEY NUMBER            (0～127)
+	param[1]:LEVEL                      (0～127)
+	param[2]:ASSIGN GROUP NUMBER        (0:NON,1～127)
+	param[3]:PANPOT                     (0:RANDOM,01(LEFT)～64～127(RIGHT))
+	param[4]:REVERB DEPTH               (0～127:0.0～1.0)
+	param[5]:CHORUS DEPTH               (0～127:0.0～1.0)
+	param[6]:Rx NOTE OFF                (0～1:OFF/ON)
+	param[7]:Rx NOTE ON                 (0～1:OFF/ON)
+	(SC55マニュアルp75,p82参照)
+*-----------------------------------------------------------------------------
+	int	zm_gs_drum_name( int port,int size,int mp_id,char *name );
+
+機能	GS音源のドラム・セット名設定
+
+引数	int port:MIDIポートの番号(0-3)
+		 -1はカレントMIDI-OUTを使用
+	int size:ドラム・セットアップ・パラメータ・データサイズ(1-8)
+	int mp_id:d0-d15=DEVICE ID(0-127,-1:以前の値を使用)
+	          d16-d31=MAP NUMBER(0,1)
+	char *name:ドラム・セット名文字列格納バッファ
+
+戻り値	0:正常終了
+	0以外:エラーコード
+
+備考	文字列は12文字以内でchar *nameからの領域に文字列を記述しておく。
+	idを-1とすると以前設定したものが選択される。最初の使用時に
+	省略した場合はZMUSIC内のデフォルト値$10が選択される。
+	(SC55マニュアルp82参照)
+*-----------------------------------------------------------------------------
+	int	zm_gs_print( int port,int size,int id,char *mes );
+
+機能	GS音源の画面へのメッセージ出力
+
+引数	int port:MIDIポートの番号(0-3)
+		 -1はカレントMIDI-OUTを使用
+	int size:メッセージ長(1-32)
+	int id:d0-d15=DEVICE ID(0-127,-1:以前の値を使用)
+	char *mes:文字列格納バッファ
+
+戻り値	0:正常終了
+	0以外:エラーコード
+
+備考	メッセージは32文字以内でchar *mesからの領域に文字列を記述しておく。
+	idを-1とすると以前設定したものが選択される。最初の使用時に
+	省略した場合はZMUSIC内のデフォルト値$10が選択される。
+*-----------------------------------------------------------------------------
+	int	zm_gs_display( int port,int id,short *pattern );
+
+機能	GS音源の画面へのドットパターン出力
+
+引数	int port:MIDIポートの番号(0-3)
+		 -1はカレントMIDI-OUTを使用
+	int id:d0-d15=DEVICE ID(0-127,-1:以前の値を使用)
+	short *pattern:ドットパターン格納バッファ
+
+戻り値	0:正常終了
+	0以外:エラーコード
+
+備考    short *patternからの領域にドットパターンを記述しておく。
+	idを-1とすると以前設定したものが選択される。最初の使用時に
+	省略した場合はZMUSIC内のデフォルト値$10が選択される。
+
+例
+　　    /*SC55の画面に"善"を表示する*/
+   　　 short d[16]={	%0001000000010000,
+   　　                 %0000100000100000,
+   　　                 %0111111111111100,
+                        %0000000100000000,
+                        %0011111111111000,
+                        %0000000100000000,
+                        %0111111111111100,
+                        %0001000100010000,
+                        %0000100100100000,
+                        %1111111111111110,
+                        %0000000000000000,
+                        %0011111111111000,
+                        %0010000000001000,
+                        %0010000000001000,
+                        %0011111111111000,
+                        %0010000000001000}
+        gs_display(-1,-1,d);
+*-----------------------------------------------------------------------------
+	int	zm_gm_system_on( int port );
+
+機能	GM音源のリセット
+
+引数	int port:MIDIポートの番号(0-3)
+		 -1はカレントMIDI-OUTを使用
+
+戻り値	0:正常終了
+	0以外:エラーコード
+*-----------------------------------------------------------------------------
+	int	zm_sc88_mode_set( int port,int md_id );
+
+機能	SC88モード設定
+
+引数	int port:MIDIポートの番号(0-3)
+		 -1はカレントMIDI-OUTを使用
+	int md_id:d0-d15=DEVICE ID(0-127,-1:以前の値を使用)
+		  d16-d31=SC88 MODE(0:Single, 1:Double)
+
+戻り値	0:正常終了
+	0以外:エラーコード
+
+備考	idを-1とすると以前設定したものが選択される。最初の使用時に
+	省略した場合はZMUSIC内のデフォルト値$10が選択される。
+*-----------------------------------------------------------------------------
+	int	zm_sc88_reverb( int port,int size,int id,char *rvb );
+
+機能	SC88のリバーブ・パラメータの設定
+
+引数	int port:MIDIポートの番号(0-3)
+		 -1はカレントMIDI-OUTを使用
+	int size:リバーブパラメータ・データサイズ(1-8)
+	int id:DEVICE ID(0-127,-1:以前の値を使用)
+	char *rvb:リバーブパラメータ格納バッファ
+
+戻り値	0:正常終了
+	0以外:エラーコード
+
+備考    char *rvbからの領域にリバーブパラメータを記述しておく。sizeは8以内で、
+	指定したsize個分のパラメータがSC88へ送信される。
+	idを-1とすると以前設定したものが選択される。最初の使用時に
+	省略した場合はZMUSIC内のデフォルト値$10が選択される
+
+	rvb[0]:REVERB MACRO 00:Room1,01:Room2,02:Room3,03:Hall1,04:Hall2
+			    05:Plate,06:Delay,07:Panning Delay(FB)
+	rvb[1]:REVERB CHARACTER			($00～$07)
+	rvb[2]:REVERB PRE-LPF			($00～$07)
+	rvb[3]:REVERB LEVEL			($00～$7F)
+	rvb[4]:REVERB TIME			($00～$7F)
+	rvb[5]:REVERB DELAY FEEDBACK		($00～$7F)
+	rvb[6]:REVERB SEND LEVEL TO CHORUS	($00～$7F/SC88ではダミー)
+	rvb[7]:REVERB PRE-DELAY TIME		($00～$7F)
+	(SC88マニュアルp77参照)
+*-----------------------------------------------------------------------------
+	int	zm_sc88_chorus( int port,int size,int id,char *cho );
+
+機能	SC88のコーラス・パラメータの設定
+
+引数	int port:MIDIポートの番号(0-3)
+		 -1はカレントMIDI-OUTを使用
+	int size:コーラスパラメータ・データサイズ(1-9)
+	int id:DEVICE ID(0-127,-1:以前の値を使用)
+	char *cho:コーラスパラメータ格納バッファ
+
+戻り値	0:正常終了
+	0以外:エラーコード
+
+備考    char *choからの領域にコーラスパラメータを記述しておく。sizeは9以内で
+	指定したsize個分のパラメータがSC88へ送信される。
+	idを-1とすると以前設定したものが選択される。最初の使用時に
+	省略した場合はZMUSIC内のデフォルト値$10が選択される。
+
+	cho[0]:CHORUS MACRO 00:Chorus1,01:Chorus2,02:Chorus3,03:Chorus4
+			    04:Feedback Chorus,05:Flanger,06:Short Delay
+			    07:Short Delay(FB)
+	cho[1]:CHORUS PRE-LPF			($00～$07)
+	cho[2]:CHORUS LEVEL			($00～$7F)
+	cho[3]:CHORUS FEEDBACK			($00～$7F)
+	cho[4]:CHORUS DELAY			($00～$7F)
+	cho[5]:CHORUS RATE			($00～$7F)
+	cho[6]:CHORUS DEPTH			($00～$7F)
+	cho[7]:CHORUS SEND LEVEL TO REVERB	($00～$7F)
+	cho[8]:CHORUS SEND LEVEL TO DELAY	($00～$7F)
+	(SC88マニュアルp78参照)
+*-----------------------------------------------------------------------------
+	int	zm_sc88_delay( int port,int size,int id,char *dly );
+
+機能	SC88のディレイ・パラメータの設定
+
+引数	int port:MIDIポートの番号(0-3)
+		 -1はカレントMIDI-OUTを使用
+	int size:ディレイパラメータ・データサイズ(1-11)
+	int id:DEVICE ID(0-127,-1:以前の値を使用)
+	char *dly:ディレイパラメータ格納バッファ
+
+戻り値	0:正常終了
+	0以外:エラーコード
+
+備考    char *dlyからの領域にリバーブパラメータを記述しておく。sizeは11以内で、
+	指定したsize個分のパラメータがSC88へ送信される。
+	idを-1とすると以前設定したものが選択される。最初の使用時に
+	省略した場合はZMUSIC内のデフォルト値$10が選択される
+
+	dly[0]:DELAY MACRO 00:Delay1,01:Delay2,02:Delay3,03:Delay4,04:Pan Delay1
+			   05:Pan Delay2,06:Pan Delay3,07:Pan Delay4
+			   08:Delay to Reverb,09:Pan Repeat
+	dly[1]:DELAY PRE-LPF			($00～$07)
+	dly[2]:DELAY TIME CENTER		($01～$73:0.1ms～sec)
+	dly[3]:DELAY TIME RATIO LEFT		($01～$78:4～500%)
+	dly[4]:DELAY TIME RATIO RIGHT		($01～$78:4～500%)
+	dly[5]:DELAY LEVEL CENTER		($00～$7F)
+	dly[6]:DELAY LEVEL LEFT			($00～$7F)
+	dly[7]:DELAY LEVEL RIGHT		($00～$7F)
+	dly[8]:DELAY LEVEL			($00～$7F)
+	dly[9]:DELAY FEEDBACK			($00～$7F:-64～+63)
+	dly[10]:DELAY SENDLEVEL TO REVERB	($00～$7F)
+	(SC88マニュアルp78参照)
+*-----------------------------------------------------------------------------
+	int	zm_sc88_equalizer( int port,int size,int id,char *eql );
+
+機能	SC88のイコライザ・パラメータの設定
+
+引数	int port:MIDIポートの番号(0-3)
+		 -1はカレントMIDI-OUTを使用
+	int size:イコライザパラメータ・データサイズ(1-4)
+	int id:DEVICE ID(0-127,-1:以前の値を使用)
+	char *eql:イコライザパラメータ格納バッファ
+
+戻り値	0:正常終了
+	0以外:エラーコード
+
+備考    char *eqlからの領域にコーラスパラメータを記述しておく。sizeは4以内で
+	指定したsize個分のパラメータがSC88へ送信される。
+	idを-1とすると以前設定したものが選択される。最初の使用時に
+	省略した場合はZMUSIC内のデフォルト値$10が選択される。
+
+	eql[0]:EQ LOW FREQ			(0,1:200Hz,400Hz)
+	eql[1]:EQ LOW GAIN			($34～$4c:-12～+12dB)
+	eql[2]:EQ HIGH FREQ			(0,1:3kHz,6kHz)
+	eql[3]:EQ HIGH GAIN			($34～$4c:-12～+12dB)
+	(SC88マニュアルp78参照)
+*-----------------------------------------------------------------------------
+	int	zm_sc88_part_parameter( int port,int size,int pt_id,char *param );
+
+機能	SC88のパート・パラメータの設定
+
+引数	int port:MIDIポートの番号(0-3)
+		 -1はカレントMIDI-OUTを使用
+	int size:パートパラメータ・データサイズ(1-127)
+	int pt_id:d0-d15=DEVICE ID(0-127,-1:以前の値を使用)
+	          d16-d31=PART NUMBER(1-16)
+	char *param:パートパラメータ格納バッファ
+
+戻り値	0:正常終了
+	0以外:エラーコード
+
+備考    char *paramからの領域にパートパラメータを記述しておく。sizeは127以内で
+	指定したsize個分のパラメータがSC88へ送信される。
+	idを-1とすると以前設定したものが選択される。最初の使用時に
+	省略した場合はZMUSIC内のデフォルト値$10が選択される。
+
+	param[0]:Rx CHANNEL                  (1～16,17＝OFF)
+	param[1]:Rx PITCH BEND               (0～1:OFF/ON)
+	param[2]:Rx CH PRESSURE(CAf)         (0～1:OFF/ON)
+	param[3]:Rx PROGRAM CHANGE           (0～1:OFF/ON)
+	param[4]:Rx CONTROL CHANGE           (0～1:OFF/ON)
+	param[5]:Rx POLY PRESSURE(PAf)       (0～1:OFF/ON)
+	param[6]:Rx NOTE MESSAGE             (0～1:OFF/ON)
+	param[7]:Rx RPN                      (0～1:OFF/ON)
+	param[8]:Rx NRPN                     (0～1:OFF/ON)
+	param[9]:Rx MODURATION               (0～1:OFF/ON)
+	param[10]:Rx VOLUME                  (0～1:OFF/ON)
+	param[11]:Rx PANPOT                  (0～1:OFF/ON)
+	param[12]:Rx EXPRESSION              (0～1:OFF/ON)
+	param[13]:Rx HOLD1                   (0～1:OFF/ON)
+	param[14]:Rx PORTAMENTO              (0～1:OFF/ON)
+	param[15]:Rx SOSTENUTO               (0～1:OFF/ON)
+	param[16]:Rx SOFT                    (0～1:OFF/ON)
+	param[17]:MONO/POLY MODE             (0～1:MONO/POLY)
+	param[18]:ASSIGN MODE                (0:SINGLE,1:LIMITED-MULTI,2:FULL-MULTI)
+	param[19]:USE FOR RHYTHM PART        (0:OFF,1:MAP1,2:MAP2)
+	param[20]:PITCH KEY SHIFT            ($28～$58:－24～＋24[semitone])
+	param[21]:PITCH OFFSET FINE(upper)   ($08～$F8:－12.0～＋12.0[Hz])
+	param[22]:PITCH OFFSET FINE(lower)         〃
+	param[23]:PART LEVEL                 (0～127)
+	param[24]:VELOCITY SENSE DEPTH       (0～127)
+	param[25]:VELOCITY SENSE OFFSET      (0～127)
+	param[26]:PART PANPOT                (0:RANDOM,01(LEFT)～64～127(RIGHT))
+	param[27]:KEY RANGE LOW              (0～127:C-1～G9)
+	param[28]:KEY RANGE HIGH             (0～127:C-1～G9)
+	param[29]:CC1 CONTROL NUMBER         (0～127)
+	param[30]:CC2 CONTROL NUMBER         (0～127)
+	param[31]:CHORUS SEND LEVEL          (0～127)
+	param[32]:REVERB SEND LEVEL          (0～127)
+	param[33]:Rx BANK SELECT	     (0:OFF,1:ON)
+	param[34]:Rx BANK SELECT LSB         (0:OFF,1:ON)
+
+	param[35]:PITCH FINE TUNE(Upper)     ($00 00～$40 00～$7f 7f:-100～0～+100)
+	param[36]:PITCH FINE TUNE(Lower)
+
+	param[37]:DELAY SEND LEVEL	     (0～127)
+
+	param[38]:Vibrato rate               ($00～$7f:－64～＋63)
+	param[39]:Vibrato depth              ($00～$7f:－64～＋63)
+	param[40]:TVF cutoff freq.           ($00～$7f:－64～＋63)
+	param[41]:TVF resonance              ($00～$7f:－64～＋63)
+	param[42]:TVF&TVA Env.attack         ($00～$7f:－64～＋63)
+	param[43]:TVF&TVA Env.decay          ($00～$7f:－64～＋63)
+	param[44]:TVF&TVA Env.release        ($00～$7f:－64～＋63)
+	param[45]:Vibrato delay              ($00～$7f:－64～＋63)
+
+	param[46]:SCALE TUNING C	     ($00～$7F:－64～＋63[cent])
+	param[47]:SCALE TUNING C#	     ($00～$7F:－64～＋63[cent])
+	param[48]:SCALE TUNING D	     ($00～$7F:－64～＋63[cent])
+	param[49]:SCALE TUNING D#	     ($00～$7F:－64～＋63[cent])
+	param[50]:SCALE TUNING E	     ($00～$7F:－64～＋63[cent])
+	param[51]:SCALE TUNING F	     ($00～$7F:－64～＋63[cent])
+	param[52]:SCALE TUNING F#	     ($00～$7F:－64～＋63[cent])
+	param[53]:SCALE TUNING G	     ($00～$7F:－64～＋63[cent])
+	param[54]:SCALE TUNING G#	     ($00～$7F:－64～＋63[cent])
+	param[55]:SCALE TUNING A	     ($00～$7F:－64～＋63[cent])
+	param[56]:SCALE TUNING A#	     ($00～$7F:－64～＋63[cent])
+	param[57]:SCALE TUNING B	     ($00～$7F:－64～＋63[cent])
+
+	param[58]:MOD PITCH CONTROL	     ($28～$58:－24～＋24[semitone])
+	param[59]:MOD TVF CUTOFF CONTROL     ($00～$7F:－9600～＋9600[CENT])
+	param[60]:MOD AMPLITUDE CONTROL	     ($00～$7F:－100.0～＋100.0[%])
+	param[61]:MOD LFO1 RATE CONTROL	     ($00～$7F:－10.0～＋10.0[Hz])
+	param[62]:MOD LFO1 PITCH DEPTH	     ($00～$7F:0～600[cent])
+	param[63]:MOD LFO1 TVF DEPTH	     ($00～$7F:0～2400[cent])
+	param[64]:MOD LFO1 TVA DEPTH	     ($00～$7F:0～100.0[%])
+	param[65]:MOD LFO2 RATE CONTROL	     ($00～$7F:－10.0～＋10.0[Hz])
+	param[66]:MOD LFO2 PITCH DEPTH	     ($00～$7F:0～600[cent])
+	param[67]:MOD LFO2 TVF DEPTH	     ($00～$7F:0～2400[cent])
+	param[68]:MOD LFO2 TVA DEPTH	     ($00～$7F:0～100.0[%])
+
+	param[69]:BEND PITCH CONTROL	     ($40～$58:－24～＋24[semitone])
+	param[70]:BEND TVF CUTOFF CONTROL    ($00～$7F:－9600～＋9600[CENT])
+	param[71]:BEND AMPLITUDE CONTROL     ($00～$7F:－100.0～＋100.0[%])
+	param[72]:BEND LFO1 RATE CONTROL     ($00～$7F:－10.0～＋10.0[Hz])
+	param[73]:BEND LFO1 PITCH DEPTH	     ($00～$7F:0～600[cent])
+	param[74]:BEND LFO1 TVF DEPTH	     ($00～$7F:0～2400[cent])
+	param[75]:BEND LFO1 TVA DEPTH	     ($00～$7F:0～100.0[%])
+	param[76]:BEND LFO2 RATE CONTROL     ($00～$7F:－10.0～＋10.0[Hz])
+	param[77]:BEND LFO2 PITCH DEPTH	     ($00～$7F:0～600[cent])
+	param[78]:BEND LFO2 TVF DEPTH	     ($00～$7F:0～2400[cent])
+	param[79]:BEND LFO2 TVA DEPTH	     ($00～$7F:0～100.0[%])
+
+	param[80]:CAf PITCH CONTROL	     ($28～$58:－24～＋24[semitone])
+	param[81]:CAf TVF CUTOFF CONTROL     ($00～$7F:－9600～＋9600[CENT])
+	param[82]:CAf AMPLITUDE CONTROL	     ($00～$7F:－100.0～＋100.0[%])
+	param[83]:CAf LFO1 RATE CONTROL	     ($00～$7F:－10.0～＋10.0[Hz])
+	param[84]:CAf LFO1 PITCH DEPTH	     ($00～$7F:0～600[cent])
+	param[85]:CAf LFO1 TVF DEPTH	     ($00～$7F:0～2400[cent])
+	param[86]:CAf LFO1 TVA DEPTH	     ($00～$7F:0～100.0[%])
+	param[87]:CAf LFO2 RATE CONTROL	     ($00～$7F:－10.0～＋10.0[Hz])
+	param[88]:CAf LFO2 PITCH DEPTH	     ($00～$7F:0～600[cent])
+	param[89]:CAf LFO2 TVF DEPTH	     ($00～$7F:0～2400[cent])
+	param[90]:CAf LFO2 TVA DEPTH	     ($00～$7F:0～100.0[%])
+
+	param[91]:PAf PITCH CONTROL	     ($28～$58:－24～＋24[semitone])
+	param[92]:PAf TVF CUTOFF CONTROL     ($00～$7F:－9600～＋9600[CENT])
+	param[93]:PAf AMPLITUDE CONTROL	     ($00～$7F:－100.0～＋100.0[%])
+	param[94]:PAf LFO1 RATE CONTROL	     ($00～$7F:－10.0～＋10.0[Hz])
+	param[95]:PAf LFO1 PITCH DEPTH	     ($00～$7F:0～600[cent])
+	param[96]:PAf LFO1 TVF DEPTH	     ($00～$7F:0～2400[cent])
+	param[97]:PAf LFO1 TVA DEPTH	     ($00～$7F:0～100.0[%])
+	param[98]:PAf LFO2 RATE CONTROL	     ($00～$7F:－10.0～＋10.0[Hz])
+	param[99]:PAf LFO2 PITCH DEPTH	     ($00～$7F:0～600[cent])
+	param[100]:PAf LFO2 TVF DEPTH	     ($00～$7F:0～2400[cent])
+	param[101]:PAf LFO2 TVA DEPTH	     ($00～$7F:0～100.0[%])
+
+       param[102]:CC1 PITCH CONTROL	     ($28～$58:－24～＋24[semitone])
+       param[103]:CC1 TVF CUTOFF CONTROL     ($00～$7F:－9600～＋9600[CENT])
+       param[104]:CC1 AMPLITUDE CONTROL	     ($00～$7F:－100.0～＋100.0[%])
+       param[105]:CC1 LFO1 RATE CONTROL	     ($00～$7F:－10.0～＋10.0[Hz])
+       param[106]:CC1 LFO1 PITCH DEPTH	     ($00～$7F:0～600[cent])
+       param[107]:CC1 LFO1 TVF DEPTH	     ($00～$7F:0～2400[cent])
+       param[108]:CC1 LFO1 TVA DEPTH	     ($00～$7F:0～100.0[%])
+       param[109]:CC1 LFO2 RATE CONTROL	     ($00～$7F:－10.0～＋10.0[Hz])
+       param[110]:CC1 LFO2 PITCH DEPTH	     ($00～$7F:0～600[cent])
+       param[111]:CC1 LFO2 TVF DEPTH	     ($00～$7F:0～2400[cent])
+       param[112]:CC1 LFO2 TVA DEPTH	     ($00～$7F:0～100.0[%])
+
+       param[113]:CC2 PITCH CONTROL	     ($28～$58:－24～＋24[semitone])
+       param[114]:CC2 TVF CUTOFF CONTROL     ($00～$7F:－9600～＋9600[CENT])
+       param[115]:CC2 AMPLITUDE CONTROL	     ($00～$7F:－100.0～＋100.0[%])
+       param[116]:CC2 LFO1 RATE CONTROL	     ($00～$7F:－10.0～＋10.0[Hz])
+       param[117]:CC2 LFO1 PITCH DEPTH	     ($00～$7F:0～600[cent])
+       param[118]:CC2 LFO1 TVF DEPTH	     ($00～$7F:0～2400[cent])
+       param[119]:CC2 LFO1 TVA DEPTH	     ($00～$7F:0～100.0[%])
+       param[120]:CC2 LFO2 RATE CONTROL	     ($00～$7F:－10.0～＋10.0[Hz])
+       param[121]:CC2 LFO2 PITCH DEPTH	     ($00～$7F:0～600[cent])
+       param[122]:CC2 LFO2 TVF DEPTH	     ($00～$7F:0～2400[cent])
+       param[123]:CC2 LFO2 TVA DEPTH	     ($00～$7F:0～100.0[%])
+
+       param[124]:TONE MAP NUMBER	     (0:SELECTED,1:SC55,2:SC88)
+       param[125]:TONE MAP0 NUMBER	     (1:SC55,2:SC88)
+       param[126]:EQ ON/OFF		     (0:OFF,1:ON)
+       (SC88マニュアルp79～p81参照)
+*-----------------------------------------------------------------------------
+	int	zm_sc88_drum_setup( int port,int size,int dr_id,char *param );
+
+機能	SC88のドラム・セットアップ設定
+
+引数	int port:MIDIポートの番号(0-3)
+		 -1はカレントMIDI-OUTを使用
+	int size:ドラム・セットアップ・パラメータ・データサイズ(1-9)
+	int dr_id:d0-d15=DEVICE ID(0-127,-1:以前の値を使用)
+	          d16-d23=NOTE NUMBER(0-127)
+	          d24-d31=MAP NUMBER(0-1)
+	char *param:ドラム・セットアップ・パラメータ格納バッファ
+
+戻り値	0:正常終了
+	0以外:エラーコード
+
+備考    char *paramからの領域にドラム・セットアップ・パラメータを記述しておく。
+	sizeは9以内で指定したsize個分のパラメータがSC88へ送信される。
+	idを-1とすると以前設定したものが選択される。最初の使用時に
+	省略した場合はZMUSIC内のデフォルト値$10が選択される。
+
+	param[0]:PLAY KEY NUMBER            (0～127)
+	param[1]:LEVEL                      (0～127)
+	param[2]:ASSIGN GROUP NUMBER        (0:NON,1～127)
+	param[3]:PANPOT                     (0:RANDOM,01(LEFT)～64～127(RIGHT))
+	param[4]:REVERB DEPTH               (0～127:0.0～1.0)
+	param[5]:CHORUS DEPTH               (0～127:0.0～1.0)
+	param[6]:Rx NOTE OFF                (0～1:OFF/ON)
+	param[7]:Rx NOTE ON                 (0～1:OFF/ON)
+	param[8]:DELAY SEND LEVEL	    (0-127:0.0～1.0)
+	(SC88マニュアルp82参照)
+*-----------------------------------------------------------------------------
+	int	zm_sc88_drum_name( int port,int size,int mp_id,char *name );
+
+機能	SC88のドラム・セット名設定
+
+引数	int port:MIDIポートの番号(0-3)
+		 -1はカレントMIDI-OUTを使用
+	int size:ドラム・セットアップ・パラメータ・データサイズ(1-8)
+	int mp_id:d0-d15=DEVICE ID(0-127,-1:以前の値を使用)
+	          d16-d31=MAP NUMBER(0,1,$80,$81)
+	char *name:ドラム・セット名文字列格納バッファ
+
+戻り値	0:正常終了
+	0以外:エラーコード
+
+備考	文字列は12文字以内でchar *nameからの領域に文字列を記述しておく。
+	idを-1とすると以前設定したものが選択される。最初の使用時に
+	省略した場合はZMUSIC内のデフォルト値$10が選択される。
+	MAP NUMBER=$80がユーザードラムセット65,MAP NUMBER=$81が
+	ユーザードラムセット66に対応する。
+	(SC88マニュアルp82参照)
+*-----------------------------------------------------------------------------
+	int	zm_sc88_user_inst( int port,int size,int ui_id,char *param );
+
+機能	SC88のユーザー音色の設定
+
+引数	int port:MIDIポートの番号(0-3)
+		 -1はカレントMIDI-OUTを使用
+	int size:ユーザー音色パラメータ・データサイズ(1-11)
+	int dr_id:d0-d15=DEVICE ID(0-127,-1:以前の値を使用)
+	          d16-d23=PROGRAM NUMBER(0-127)
+	          d24-d31=BANK NUMBER(0-1)
+	char *param:ユーザー音色・パラメータ格納バッファ
+
+戻り値	0:正常終了
+	0以外:エラーコード
+
+備考    char *paramからの領域にユーザー音色・パラメータを記述しておく。
+	sizeは11以内で指定したsize個分のパラメータがSC88へ送信される。
+	idを-1とすると以前設定したものが選択される。最初の使用時に
+	省略した場合はZMUSIC内のデフォルト値$10が選択される。
+
+	param[0]:SOURCE TONE#(MAP)          (1,2)
+	param[1]:BANK NUMBER MSB            (0～127)
+	param[2]:PROGRAM NUMBER       	    (0～127)
+	param[3]:Vibrato rate               ($00～$7f:－64～＋63)
+	param[4]:Vibrato depth              ($00～$7f:－64～＋63)
+	param[5]:TVF cutoff freq.           ($00～$7f:－64～＋63)
+	param[6]:TVF resonance              ($00～$7f:－64～＋63)
+	param[7]:TVF&TVA Env.attack         ($00～$7f:－64～＋63)
+	param[8]:TVF&TVA Env.decay          ($00～$7f:－64～＋63)
+	param[9]:TVF&TVA Env.release        ($00～$7f:－64～＋63)
+	param[10]:Vibrato delay             ($00～$7f:－64～＋63)
+	(SC88マニュアルp82参照)
+*-----------------------------------------------------------------------------
+	int	zm_sc88_user_drum( int port,int size,int ud_id,char *param );
+
+機能	SC88のユーザードラムセットの設定
+
+引数	int port:MIDIポートの番号(0-3)
+		 -1はカレントMIDI-OUTを使用
+	int size:ユーザードラムセット・パラメータ・データサイズ(1-12)
+	int dr_id:d0-d15=DEVICE ID(0-127,-1:以前の値を使用)
+	          d16-d23=NOTE NUMBER(0-127)
+	          d24-d31=SET NUMBER(0-1)
+	char *param:ユーザードラムセット・パラメータ格納バッファ
+
+戻り値	0:正常終了
+	0以外:エラーコード
+
+備考    char *paramからの領域にユーザードラムセット・パラメータを記述しておく。
+	sizeは12以内で指定したsize個分のパラメータがSC88へ送信される。
+	idを-1とすると以前設定したものが選択される。最初の使用時に
+	省略した場合はZMUSIC内のデフォルト値$10が選択される。
+
+	param[0]:PLAY KEY NUMBER            (0～127)
+	param[1]:LEVEL                      (0～127)
+	param[2]:ASSIGN GROUP NUMBER        (0:NON,1～127)
+	param[3]:PANPOT                     (0:RANDOM,01(LEFT)～64～127(RIGHT))
+	param[4]:REVERB DEPTH               (0～127:0.0～1.0)
+	param[5]:CHORUS DEPTH               (0～127:0.0～1.0)
+	param[6]:Rx NOTE OFF                (0～1:OFF/ON)
+	param[7]:Rx NOTE ON                 (0～1:OFF/ON)
+	param[8]:DELAY SEND LEVEL	    (0-127:0.0～1.0)
+	param[9]:SOURCE DRUM SET#(MAP)	    (1-2)
+	param[10]:PROGRAM NUMBER	    (0-127)
+	param[11]:SOURCE NOTE NUMBER	    (0-127)
+	(SC88マニュアルp82参照)
+*-----------------------------------------------------------------------------
+	int	zm_mt32_reset( int port,int id );
+
+機能	MT32の初期化
+
+引数	int port:MIDIポートの番号(0-3)
+		 -1はカレントMIDI-OUTを使用
+	int id:d0-d15=DEVICE ID(0-127,-1:以前の値を使用)
+
+戻り値	0:正常終了
+	0以外:エラーコード
+
+備考	idを-1とすると以前設定したものが選択される。最初の使用時に
+	省略した場合はZMUSIC内のデフォルト値$10が選択される。
+*-----------------------------------------------------------------------------
+	int	zm_mt32_partial_reserve( int port,int id,char *rsv );
+
+機能	MT32のパーシャルリザーブ
+
+引数	int port:MIDIポートの番号(0-3)
+		 -1はカレントMIDI-OUTを使用
+	int id:DEVICE ID(0-127,-1:以前の値を使用)
+	char *rsv:パート1～パート9までのパーシャルリザーブ値が
+		  格納されているバッファ
+
+戻り値	0:正常終了
+	0以外:エラーコード
+
+備考    char *rsvからの領域にパーシャルリザーブ値を9パート分格納しておく。
+	また、合計が楽器の最大同時発声数以下にならなければならない。
+	param[0]＝パート1,param[1]＝パート2…,param[8]＝パート9というふうに対応する。
+	なお、パート9はリズムパートに対応する。
+	idを-1とすると以前設定したものが選択される。最初の使用時に
+	省略した場合はZMUSIC内のデフォルト値$10が選択される。
+*-----------------------------------------------------------------------------
+	int	zm_mt32_reverb( int port,int size,int id,char *rsv );
+
+機能	MT32のリバーブパラメータの設定
+
+引数	int port:MIDIポートの番号(0-3)
+		 -1はカレントMIDI-OUTを使用
+	int size:リバーブパラメータ・データサイズ(1-3)
+	int id:DEVICE ID(0-127,-1:以前の値を使用)
+	char *rvb:リバーブパラメータ格納バッファ
+
+戻り値	0:正常終了
+	0以外:エラーコード
+
+備考    char *rvbからの領域にリバーブパラメータを記述しておく。sizeは3以内で、
+	指定したsize個分のパラメータがMT32へ送信される。
+	idを-1とすると以前設定したものが選択される。最初の使用時に
+	省略した場合はZMUSIC内のデフォルト値$10が選択される
+
+	rvb[0]:REVERB MODE                (0:Room,1:Hall,2:Plate,3:Tap Delay)
+	rvb[1]:REVERB TIME                (0～7)
+	rvb[2]:REVERB LEVEL               (0～7)
+	(MT32マニュアルp35,CM64マニュアルp30参照)
+*-----------------------------------------------------------------------------
+	int	zm_mt32_part_setup( int port,int size,int id,char *rsv );
+
+機能	MT32のパート・パラメータの設定
+
+引数	int port:MIDIポートの番号(0-3)
+		 -1はカレントMIDI-OUTを使用
+	int size:パートパラメータ・データサイズ(1-9)
+	int id:d0-d15=DEVICE ID(0-127,-1:以前の値を使用)
+	char *param:パートパラメータ格納バッファ
+
+戻り値	0:正常終了
+	0以外:エラーコード
+
+備考    char *paramからの領域にパートパラメータを記述しておく。
+	パートパラメータは
+	param[0]＝パート1のMIDIチャンネル,param[1]＝パート2のMIDIチャンネル…,
+	param[8]＝リズムパートのMIDIチャンネル
+	という構成を取る
+	sizeは9以内で指定したsize個分のパラメータがMT32へ送信される。
+	idを-1とすると以前設定したものが選択される。最初の使用時に
+	省略した場合はZMUSIC内のデフォルト値$10が選択される。
+*-----------------------------------------------------------------------------
+	int	zm_mt32_drum( int port,int size,int dr_id,char *drum );
+
+機能	MT32のドラム・セットアップ設定
+
+引数	int port:MIDIポートの番号(0-3)
+		 -1はカレントMIDI-OUTを使用
+	int size:ドラム・セットアップ・パラメータ・データサイズ(1-4)
+	int dr_id:d0-d15=DEVICE ID(0-127,-1:以前の値を使用)
+	          d16-d31=NOTE NUMBER(24～87)
+	char *drum:ドラム・セットアップ・パラメータ格納バッファ
+
+戻り値	0:正常終了
+	0以外:エラーコード
+
+備考    char *drumからの領域にドラム・セットアップ・パラメータを記述しておく。
+	sizeは4以内で指定したsize個分のパラメータがMT32へ送信される。
+	idを-1とすると以前設定したものが選択される。最初の使用時に
+	省略した場合はZMUSIC内のデフォルト値$10が選択される。
+
+	drum[0]:TIMBRE                   (0～63:i1～64,64～127:r1～64)
+	drum[1]:OUTPUT LEVEL             (0～100)
+	drum[2]:PANPOT                   (0～14)
+	drum[3]:REVERB SWITCH            (0～1:OFF/ON)
+        (MT32マニュアルp35,CM64マニュアルp30参照)
+*-----------------------------------------------------------------------------
+	int	zm_mt32_common( int port,int size,int cm_id,char *common );
+
+機能	MT32のコモン・パラメータの設定
+
+引数	int port:MIDIポートの番号(0-3)
+		 -1はカレントMIDI-OUTを使用
+	int size:コモン・パラメータ・データサイズ(1-4)
+	int cm_id:d0-d15=DEVICE ID(0-127,-1:以前の値を使用)
+	          d16-d31=PROGRAM NUMBER(1-64)
+	char *common:コモン・パラメータ格納バッファ
+
+戻り値	0:正常終了
+	0以外:エラーコード
+
+備考    char *commonからの領域にコモン・パラメータを記述しておく。
+	sizeは4以内で指定したsize個分のパラメータがMT32へ送信される。
+	idを-1とすると以前設定したものが選択される。最初の使用時に
+	省略した場合はZMUSIC内のデフォルト値$10が選択される。
+
+	common[0]:Structure of Partial#1&2        (0～12:1～13)
+	common[1]:Structure of Partial#3&4        (0～12:1～13)
+	common[2]:PARTIAL MUTE                    (0～15)
+	common[3]:ENV MODE                        (0～1:NORMAL,NO SUSTAIN)
+        (MT32マニュアルp34,CM64マニュアルp29参照)
+*-----------------------------------------------------------------------------
+	int	zm_mt32_partial( int port,int size,int pl_id,char *partial );
+
+機能	MT32のパーシャル・パラメータ設定
+
+引数	int port:MIDIポートの番号(0-3)
+		 -1はカレントMIDI-OUTを使用
+	int size:パーシャル・パラメータ・データサイズ(1-58)
+	int pl_id:d0-d15=DEVICE ID(0-127,-1:以前の値を使用)
+	          d16-d23=PARTIAL NUMBER(1-4)
+	          d24-d31=PROGRAM NUMBER(1-64)
+	char *partial:パーシャル・パラメータ格納バッファ
+
+戻り値	0:正常終了
+	0以外:エラーコード
+
+備考    char *partialからの領域にパーシャル・パラメータを記述しておく。
+	sizeは58以内で指定したsize個分のパラメータがMT32へ送信される。
+	idを-1とすると以前設定したものが選択される。最初の使用時に
+	省略した場合はZMUSIC内のデフォルト値$10が選択される。
+
+	partial[0]:WG PITCH COARSE                    (0～96:C1,C#1,～,C9)
+	partial[1]:WG PITCH FINE                      (0～100:－50～＋50)
+	partial[2]:WG PITCH KEYFOLLOW                 (0～16:－1,－1/2,－1/4,0,1/8,1/4,
+							 3/8,1/2,5/8,3/4,7/8,1,
+							 5/4,3/2,2,s1,s2)
+	partial[3]:WG PITCH BENDER SW                 (0～1:OFF/ON)
+	partial[4]:WG WAVEFORM/PCM BANK               (0～3:SQU1,SAW1,SQU2,SAW2)
+	partial[5]:WG PCM WAVE                        (0～127:1～128)
+	partial[6]:WG PULSE WIDTH                     (0～100)
+	partial[7]:WG PW VELO SENS                    (0～14:－7～＋7)
+	partial[8]:P-ENV DEPTH                        (0～10)
+	partial[9]:P-ENV VELO SENS                    (0～3)
+       partial[10]:P-ENV TIME KEYF                    (0～4)
+       partial[11]:P-ENV TIME 1                       (0～100)
+       partial[12]:P-ENV TIME 2                       (0～100)
+       partial[13]:P-ENV TIME 3                       (0～100)
+       partial[14]:P-ENV TIME 4                       (0～100)
+       partial[15]:P-ENV LEVEL 0                      (0～100:－50～＋50)
+       partial[16]:P-ENV LEVEL 1                      (0～100:－50～＋50))
+       partial[17]:P-ENV LEVEL 2                      (0～100:－50～＋50)
+       partial[18]:P-ENV SUSTAIN LEVEL                (0～100:－50～＋50)
+       partial[19]:END LEVEL                          (0～100:－50～＋50)
+       partial[20]:P-LFO RATE                         (0～100)
+       partial[21]:P-LFO DEPTH                        (0～100)
+       partial[22]:P-LFO MOD SENS                     (0～100)
+       partial[23]:TVF CUTOFF FREQ                    (0～100)
+       partial[24]:TVF RESONANCE                      (0～30)
+       partial[25]:TVF KEYFOLLOW                      (0～14:－1,－1/2,－1/4,0,1/8,1/4,
+							 3/8,1/2,5/8,3/4,7/8,1,
+							 5/4,3/2,2)
+       partial[26]:TVF BIAS POINT/DIR                 (0～127)
+       partial[27]:TVF BIAS LEVEL                     (0～14:－7～＋7)
+       partial[28]:TVF ENV DEPTH                      (0～100)
+       partial[29]:TVF ENV VELO SENS                  (0～100)
+       partial[30]:TVF ENV DEPTH KEYF                 (0～4)
+       partial[31]:TVF ENV TIME KEYF                  (0～4)
+       partial[32]:TVF ENV TIME 1                     (0～100)
+       partial[33]:TVF ENV TIME 2                     (0～100)
+       partial[34]:TVF ENV TIME 3                     (0～100)
+       partial[35]:TVF ENV TIME 4                     (0～100)
+       partial[36]:TVF ENV TIME 5                     (0～100)
+       partial[37]:TVF ENV LEVEL 1                    (0～100)
+       partial[38]:TVF ENV LEVEL 2                    (0～100)
+       partial[39]:TVF ENV LEVEL 3                    (0～100)
+       partial[40]:TVF ENV SUSTAIN LEVEL              (0～100)
+       partial[41]:TVA LEVEL                          (0～100)
+       partial[42]:TVA VELO SENS                      (0～100:－50～＋50
+       partial[43]:TVA BIAS POINT 1                   (0～127)
+       partial[44]:TVA BIAS LEVEL 1                   (0～12:－12～0)
+       partial[45]:TVA BIAS POINT 2                   (0～127)
+       partial[46]:TVA BIAS LEVEL 2                   (0～12:－12～0)
+       partial[47]:TVA ENV TIME KEYF                  (0～4)
+       partial[48]:TVA ENV TIME V_FOLLOW              (0～4)
+       partial[49]:TVA ENV TIME 1                     (0～100)
+       partial[50]:TVA ENV TIME 2                     (0～100)
+       partial[51]:TVA ENV TIME 3                     (0～100)
+       partial[52]:TVA ENV TIME 4                     (0～100)
+       partial[53]:TVA ENV TIME 5                     (0～100)
+       partial[54]:TVA ENV LEVEL 1                    (0～100)
+       partial[55]:TVA ENV LEVEL 2                    (0～100)
+       partial[56]:TVA ENV LEVEL 3                    (0～100)
+       partial[57]:TVA ENV SUSTAIN LEVEL              (0～100)
+       (MT32マニュアルp34,CM64マニュアルp29参照)
+*-----------------------------------------------------------------------------
+	int	zm_mt32_patch( int port,int size,int pt_id,char *patch );
+
+機能	MT32のパッチ・パラメータ設定
+
+引数	int port:MIDIポートの番号(0-3)
+		 -1はカレントMIDI-OUTを使用
+	int size:パッチ・パラメータ・データサイズ(1-7)
+	int pt_id:d0-d15=DEVICE ID(0-127,-1:以前の値を使用)
+	          d16-d31=PATCH NUMBER(1-128)
+	char *patch:パッチ・パラメータ格納バッファ
+
+戻り値	0:正常終了
+	0以外:エラーコード
+
+備考    char *patchからの領域にパッチ・パラメータを記述しておく。
+	sizeは7以内で指定したsize個分のパラメータがMT32へ送信される。
+	idを-1とすると以前設定したものが選択される。最初の使用時に
+	省略した場合はZMUSIC内のデフォルト値$10が選択される。
+
+	patch[0]:TIMBRE GROUP               (0～3:a,b,i,r)
+	patch[1]:TIMBRE NUMBER              (0～63)
+	patch[2]:KEY SHIFT                  (0～48:－24～＋24)
+	patch[3]:FINE TUNE                  (0～100:－50～＋50)
+	patch[4]:BENDER RANGE               (0～24)
+	patch[5]:ASSIGN MODE                (0～3:POLY1～4)
+	patch[6]:REVERB SWITCH              (0～1:OFF/ON)
+　　　　(MT32マニュアルp35,CM64マニュアルp30参照)
+*-----------------------------------------------------------------------------
+	int	zm_mt32_print( int port,int size,int id,char *mes );
+
+機能	MT32の画面へのメッセージ出力
+
+引数	int port:MIDIポートの番号(0-3)
+		 -1はカレントMIDI-OUTを使用
+	int size:メッセージ長(1-20)
+	int id:d0-d15=DEVICE ID(0-127,-1:以前の値を使用)
+	char *mes:文字列格納バッファ
+
+戻り値	0:正常終了
+	0以外:エラーコード
+
+備考	メッセージは20文字以内でchar *mesからの領域に文字列を記述しておく。
+	idを-1とすると以前設定したものが選択される。最初の使用時に
+	省略した場合はZMUSIC内のデフォルト値$10が選択される。
+*-----------------------------------------------------------------------------
+	int	zm_u220_setup( int port,int id,char *setup );
+
+機能	U220のセットアップ・パラメータの設定
+
+引数	int port:MIDIポートの番号(0-3)
+		 -1はカレントMIDI-OUTを使用
+	int id:d0-d15=DEVICE ID(0-127,-1:以前の値を使用)
+	char *setup:セットアップ・パラメータ格納バッファ
+
+戻り値	0:正常終了
+	0以外:エラーコード
+
+備考    char *setupからの領域にセットアップ・パラメータを記述しておく。
+	char *setupの構成は必ず下に示す書式に従う。
+	idを-1とすると以前設定したものが選択される。最初の使用時に
+	省略した場合はZMUSIC内のデフォルト値$10が選択される。
+
+	setup[0]:Chorus SW                          (0～1:OFF/ON)
+	setup[1]:Reverb SW                          (0～1:OFF/ON)
+	setup[2]:Rx Cntrl Channel                   (1～17:1～16,OFF)
+	setup[3]:Patch Change                       (0～5:MAP1～MAP4,Dir,OFF)
+	setup[4]:Timbre Change                      (0～5:MAP1～MAP4,Dir,OFF)
+	setup[5]:Rhythm Change                      (0～5:MAP1～MAP4,Dir,OFF)
+	setup[6]:R.Inst Assign                      (0～5:MAP1～MAP4,Dir,OFF)
+　　　  (U220マニュアルp46,p146～148参照)
+
+注意    Ｕ２２０用の命令はＵ２０に対しても使用できる。以下同様。
+*-----------------------------------------------------------------------------
+	int	zm_u220_part_setup( int port,int pt_id,char *setup );
+
+機能	U220の(テンポラリパッチ)パートセットアップ・パラメータの設定
+
+引数	int port:MIDIポートの番号(0-3)
+		 -1はカレントMIDI-OUTを使用
+	int id:d0-d15=DEVICE ID(0-127,-1:以前の値を使用)
+	       d16-31=PART NUMBER(1-6)
+	char *setup:パートセットアップ・パラメータ格納バッファ
+
+戻り値	0:正常終了
+	0以外:エラーコード
+
+備考    char *setupからの領域にパートセットアップ・パラメータを記述しておく。
+	char *setupの構成は必ず下に示す書式に従う。
+	idを-1とすると以前設定したものが選択される。最初の使用時に
+	省略した場合はZMUSIC内のデフォルト値$10が選択される。
+
+	setup[0]:Timbre Number                  (1～128)
+	setup[1]:Voice Reserve                  (0～30)
+	setup[2]:Receive Channel                (1～17:1～16,OFF)
+	setup[3]:Key Range Low                  (0～127:C-1～G9)
+	setup[4]:Key Range High                 (0～127:C-1～G9)
+	setup[5]:Velo Level                     (0～1:Above/Below)
+	setup[6]:Velo Threshold                 (0～127)
+	setup[7]:Output Assign                  (0～4:Dry,Rev,Cho,Dir1,Dir2)
+	setup[8]:Level                          (0～127)
+	setup[9]:Pan                            (0～15:L7～M～R7)
+       setup[10]:Rx Volume                      (0～1:OFF/ON)
+       setup[11]:Rx Pan                         (0～1:OFF/ON)
+       setup[12]:Rx Hold                        (0～1:OFF/ON)
+       (U220マニュアルp58,p149参照)
+*-----------------------------------------------------------------------------
+	int	zm_u220_common( int port,int id,char *common );
+
+機能	U220の(テンポラリパッチ)コモン・パラメータの設定
+
+引数	int port:MIDIポートの番号(0-3)
+		 -1はカレントMIDI-OUTを使用
+	int id:d0-d15=DEVICE ID(0-127,-1:以前の値を使用)
+	char *common:コモン・パラメータ格納バッファ
+
+戻り値	0:正常終了
+	0以外:エラーコード
+
+備考    char *commonからの領域にコモン・パラメータを記述しておく。
+	char *commonの構成は必ず下に示す書式に従う。
+	idを-1とすると以前設定したものが選択される。最初の使用時に
+	省略した場合はZMUSIC内のデフォルト値$10が選択される。
+
+	common[0]:Chorus Type                    (0～4:Chorus1,Chorus2,FB-Chorus,
+						  Flanger,Short Delay)
+	common[1]:Chorus Out Mode                (0～1:Pre Rev,Post Rev)
+	common[2]:Chorus Level                   (0～31)
+	common[3]:Chorus Delay                   (0～31)
+	common[4]:Chorus Rate                    (0～31)
+	common[5]:Chorus Depth                   (0～31)
+	common[6]:Chorus Feedback                (1～63:－31～0～＋31)
+	common[7]:Reverb Type                    (0～7:Room1～3,Hall1～2,Gate
+						  Delay,CrossDelay)
+	common[8]:Reverb Time                    (0～31)
+	common[9]:Reverb Level                   (0～31)
+       common[10]:Reverb Delay Feedback          (0～31)
+       common[11]:Reverb Pre Delay Feedback      (0～31)
+       common[12]:Param1 #                       (0～63:0～5,7～31,64～95,OFF)
+       common[13]:Param1 Param                   (0:Timbre Level,1:Env Attack
+						  2:Env Decay,3:Env Sustain
+						  4:Env Release,5:A.Bend Depth
+						  6:A.Bend Rate,7:Detune Depth
+						  8:Vib Rate,9:Vib Wave Form
+						  10:Vib Depth,11:Vib Delay
+						  12:Vib Rise Time,13:Vib Mod Depth
+						  14:Chorus Level,15:Chorus Rate
+						  16:Chorus Feedback,17:Reverb Level
+						  18:Delay Feedback)
+       common[14]:Param2 #                       (Same as Param1 #)
+       common[15]:Param2 Param                   (Same as Param1 Param)
+       common[16]:Param3 #                       (Same as Param1 #)
+       common[17]:Param3 Param                   (Same as Param1 Param)
+       (U220マニュアルp54,p149参照)
+*-----------------------------------------------------------------------------
+	int	zm_u220_timbre( int port,int tm_id,char *timbre );
+
+機能	U220のティンバー・パラメータの設定
+
+引数	int port:MIDIポートの番号(0-3)
+		 -1はカレントMIDI-OUTを使用
+	int tm_id:d0-d15=DEVICE ID(0-127,-1:以前の値を使用)
+		  d16-d31=PROGRAM NUMBER(1-128)
+	char *timbre:ティンバー・パラメータ格納バッファ
+
+戻り値	0:正常終了
+	0以外:エラーコード
+
+備考    char *timbreからの領域にティンバー・パラメータを記述しておく。
+	char *timbreの構成は必ず下に示す書式に従う。
+	idを-1とすると以前設定したものが選択される。最初の使用時に
+	省略した場合はZMUSIC内のデフォルト値$10が選択される。
+
+	timbre[0]:Tone Media                      (0～31:I,1～31)
+	timbre[1]:Tone Number                     (1～128)
+	timbre[2]:Timbre Level                    (0～127)
+	timbre[3]:Velocity Sens                   (1～15:－7～＋7)
+	timbre[4]:Channel Press Sens              (1～15:－7～＋7)
+	timbre[5]:Env Attack Rate                 (1～15:－7～＋7)
+	timbre[6]:Env Decay Rate                  (1～15:－7～＋7)
+	timbre[7]:Env Sustain Level               (1～15:－7～＋7)
+	timbre[8]:Env Release Rate                (1～15:－7～＋7)
+	timbre[9]:Pitch Shift Coarse              (8～56:－24～＋24)
+       timbre[10]:Pitch Shift Fine                (14～114:－50～＋50)
+       timbre[11]:Bend Range Lower                (0～15:－36,－24,－12～0)
+       timbre[12]:Bend Range Upper                (0～12)
+       timbre[13]:Channel After Sens              (0～27:－36,－24,－12～＋12)
+       timbre[14]:Poly After Sens                 (0～27:－36,－24,－12～＋12)
+       timbre[15]:Auto Bend Depth                 (0～27:－36,－24,－12～＋12)
+       timbre[16]:Auto Bend Rate                  (0～15)
+       timbre[17]:Detune Depth                    (0～15)
+       timbre[18]:Rate                            (0～63)
+       timbre[19]:Waveform                        (0～8)
+       timbre[20]:Depth                           (0～15)
+       timbre[21]:Delay                           (0～15)
+       timbre[22]:Rise Time                       (0～15)
+       timbre[23]:Modulation Depth                (0～15)
+       timbre[24]:Ch After Sens                   (0～15)
+       timbre[25]:Poly After Sens                 (0～15)
+       (U220マニュアルp65,p149参照)
+*-----------------------------------------------------------------------------
+	int	zm_u220_drum_setup( int port,int id,char *setup );
+
+機能	U220の(テンポラリパッチ)パッチ・ドラム・セットアップ設定
+
+引数	int port:MIDIポートの番号(0-3)
+		 -1はカレントMIDI-OUTを使用
+	int id:d0-d15=DEVICE ID(0-127,-1:以前の値を使用)
+	char *setup:ドラム・セットアップ・パラメータ格納バッファ
+
+戻り値	0:正常終了
+	0以外:エラーコード
+
+備考    char *setupからの領域にドラム・セットアップ・パラメータを
+	記述しておく。char *setupの構成は必ず下に示す書式に従う。
+	idを-1とすると以前設定したものが選択される。最初の使用時に
+	省略した場合はZMUSIC内のデフォルト値$10が選択される。
+
+	setup[0]:Rhythm Setup #                  (0～3:1～4)
+	setup[1]:Voice Reserve                   (0～30)
+	setup[2]:Receive Channel                 (1～17:1～16,OFF)
+	setup[3]:Level                           (0～127)
+	setup[4]:Level Boost Sw                  (0～1:OFF/ON)
+	setup[5]:Rx Volume                       (0～1:OFF/ON)
+	setup[6]:Rx Hold                         (0～1:OFF/ON)
+        (U220マニュアルp63,p149参照)
+*-----------------------------------------------------------------------------
+	int	zm_u220_drum_inst( int port,int dr_id,char *inst );
+
+機能	U220の(テンポラリパッチ)ドラム音色設定
+
+引数	int port:MIDIポートの番号(0-3)
+		 -1はカレントMIDI-OUTを使用
+	int dr_id:d0-d15=DEVICE ID(0-127,-1:以前の値を使用)
+		 :d16-d31=NOTE NUMBER(35-99)
+	char *inst:ドラム音色パラメータ格納バッファ
+
+戻り値	0:正常終了
+	0以外:エラーコード
+
+備考    char *instからの領域にドラム音色パラメータを記述しておく。
+	char *instの構成は必ず下に示す書式に従う。
+	idを-1とすると以前設定したものが選択される。最初の使用時に
+	省略した場合はZMUSIC内のデフォルト値$10が選択される。
+
+	inst[0]:Tone Media                      (0～31:I,1～31)
+	inst[1]:Tone Number                     (1～128)
+	inst[2]:Source Key                      (0～127:C－1～G9)
+	inst[3]:Mute Inst                       (34～98:OFF,B1～D7)
+	inst[4]:Inst Level                      (0～31)
+	inst[5]:Velocity Sens                   (0～15)
+	inst[6]:Env Mode                        (0～1:Sustain,No Sustain)
+	inst[7]:Env Attack Rate                 (1～15:－7～＋7)
+	inst[8]:Env Decay Rate                  (1～15:－7～＋7)
+	inst[9]:Env Release Rate                (1～15:－7～＋7)
+       inst[10]:Pitch Shift Coarse              (0～27:－36,－24,－12～＋12)
+       inst[11]:Pitch Shift Fine                (14～114:－50～＋50)
+       inst[12]:Channel After Sens              (0～27:－36,－24,－12～＋12)
+       inst[13]:Poly After Sens                 (0～27:－36,－24,－12～＋12)
+       inst[14]:Random                          (0～15)
+       inst[15]:Auto Bend Depth                 (0～27:－36,－24,－12～＋12)
+       inst[16]:Auto Bend Rate                  (0～15)
+       inst[17]:Detune Depth                    (0～15)
+       inst[18]:Output Assign                   (0～3:Dry,Rev,Cho,Dir1)
+       inst[19]:Pan                             (0～15:L7～M～R7)
+       (U220マニュアルp72,p149)
+*-----------------------------------------------------------------------------
+	int	zm_u220_print( int port,int size,int id,char *mes );
+
+機能	U220の画面へのメッセージ出力
+
+引数	int port:MIDIポートの番号(0-3)
+		 -1はカレントMIDI-OUTを使用
+	int size:メッセージ長(1-12)
+	int id:d0-d15=DEVICE ID(0-127,-1:以前の値を使用)
+	char *mes:文字列格納バッファ
+
+戻り値	0:正常終了
+	0以外:エラーコード
+
+備考	メッセージは12文字以内でchar *mesからの領域に文字列を記述しておく。
+	idを-1とすると以前設定したものが選択される。最初の使用時に
+	省略した場合はZMUSIC内のデフォルト値$10が選択される。
+*-----------------------------------------------------------------------------
+	int	zm_m1_setup( char *setup );
+
+機能	M1のSEQ-SONG0のMIDIチャンネルの設定
+
+引数	char *setup:8パート分のMIDIチャンネル列格納バッファ
+
+戻り値	0:正常終了
+	0以外:エラーコード
+
+備考	char *setupで表される領域には必ず8パート分のMIDIチャンネルを
+	記載しておく。
+
+	setup[0]:パート1のMIDIチャンネル
+	setup[1]:パート2のMIDIチャンネル
+	setup[2]:パート3のMIDIチャンネル
+	setup[3]:パート4のMIDIチャンネル
+	setup[4]:パート5のMIDIチャンネル
+	setup[5]:パート6のMIDIチャンネル
+	setup[6]:パート7のMIDIチャンネル
+	setup[7]:パート8のMIDIチャンネル
+
+注意    Ｍ１用の命令はＭ１ＥＸ/Ｍ１Ｒ/Ｍ１ＲＥＸに対しても使用できる。以下同様。
+*-----------------------------------------------------------------------------
+	int	zm_m1_part_setup( char *ptstup );
+
+機能	M1のSEQ-SONG0のトラックパラメータの設定
+
+引数	char *ptstup:8パート分のトラックパラメータ格納バッファ
+
+戻り値	0:正常終了
+	0以外:エラーコード
+
+備考	char *ptstupで表される領域には必ず8パート分のトラックパラメータを
+	記載しておく。
+
+	TRACK 1
+	ptstup[0]:PROGRAM NUMBER                  (0～199:I00～C99)
+	ptstup[1]:OUTPUT LEVEL                    (0～99)
+	ptstup[2]:KEY TRANSPOSE                   ($F4～$0C:－12～12)
+	ptstup[3]:DETUNE                          ($CE～$32:－50～＋50)
+	ptstup[4]:PAN                             (0～13:10:0～0:10,C,C+D,D)
+	TRACK 2～8
+	以下同様
+　　　　(M1マニュアルp126参照)
+*-----------------------------------------------------------------------------
+	int	zm_m1_effect_setup( char *effect );
+
+機能	M1のSEQ-SONG0のエフェクトパラメータの設定
+
+引数	char *effect:エフェクトパラメータ格納バッファ
+
+戻り値	0:正常終了
+	0以外:エラーコード
+
+備考	char *effectで表される領域にはダミーデータも含めて必ず25個の
+	エフェクトパラメータが記載されていなければならない。
+
+	effect[0]:Effect 1 Pattern No.            (0～33:1～32,Thru)
+	effect[1]:Effect 2 Pattern No.            (0～33:1～32,Thru)
+	effect[2]:Effect 1 L-Ch E.Balnc           (0～100)
+	effect[3]:Effect 1 R-Ch E.Balnc           (0～100)
+	effect[4]:Effect 2 L-Ch E.Balnc           (0～100)
+	effect[5]:Effect 2 R-Ch E.Balnc           (0～100)
+	effect[6]:Output 3 Pan                    (0～101:OFF,100:0～0:100)
+	effect[7]:Output 4 Pan                    (0～101:OFF,100:0～0:100)
+	effect[8]:Effect I/O                      (BIT0:Effect 1 L-Ch 0＝OFF/1＝ON
+						  BIT1:Effect 1 R-Ch 0＝OFF/1＝ON
+						  BIT2:Effect 2 L-Ch 0＝OFF/1＝ON
+						  BIT3:Effect 2 R-Ch 0＝OFF/1＝ON)
+						  BIT4:Effect 2 0＝PARALLEL/1＝SERIAL)
+	effect[9～16]:Effect 1 Parameter 
+       effect[17～24]:Effect 2 Parameter
+
+	Ｓｔｒｕｃｔｕｒｅ  ｏｆ  Ｅｆｆｅｃｔ  Ｐａｒａｍｅｔｅｒ
+						     (ofs＝9 or 17)
+	1～3:Hall (4,5:Room,6:Live Stage)
+	effect[ofs+0]:Reverb Time                 (0～97:0.2～9.9),(0～48:0.2～5.0)
+	effect[ofs+1]:Dummy                         0
+	effect[ofs+2]:High Damp                   (0～99)
+	effect[ofs+3]:Pre Delay                   (0～200)
+	effect[ofs+4]:E/R Level                   (0～99)
+	effect[ofs+5]:Dummy                         0
+	effect[ofs+6]:EQ High                     ($F4～$0C:－12～＋12)
+	effect[ofs+7]:EQ Low                      ($F4～$0C:－12～＋12)
+
+	7～9:Early Reflection 1,2,3
+	effect[ofs+0]:E/R Time                    (0～70:100～800)
+	effect[ofs+1]:Pre Delay                   (0～200)
+	effect[ofs+2]:Dummy                       0
+	      :                                	  :
+	effect[ofs+5]:Dummy                       0
+	effect[ofs+6]:EQ High                     ($F4～$0C:－12～＋12)
+	effect[ofs+7]:EQ Low                      ($F4～$0C:－12～＋12)
+
+	10:Stereo Delayt,11:Cross Delay
+	effect[ofs+0]:Delay Time L (L)            (0～500)
+	effect[ofs+1]:Delay Time L (H)
+	effect[ofs+2]:Feedback                    ($9D～$63:－99～99)
+	effect[ofs+3]:High Damp                   (0～99)
+	effect[ofs+4]:Delay Time R (L)            (0～500)
+	effect[ofs+5]:Delay Time R (H)
+	effect[ofs+6]:EQ High                     ($F4～$0C:－12～＋12)
+	effect[ofs+7]:EQ Low                      ($F4～$0C:－12～＋12)
+
+	12～13:Stereo Chorus 1～2 (14～15:Flanger)
+	effect[ofs+0]:Depth                       (0～99)
+	effect[ofs+1]:Speed                       (0～99:0.03～3.00 0.03step
+						  100～199:3.1～13.0 0.1step
+						  200～216:14.0～30.0 1.0step)
+	effect[ofs+2]:LFO Status                  (BIT0:Waveform ＝0:Sin,＝1:Tri
+						  BIT1:Phase ＝0:0.0ﾟ,＝1:180ﾟ
+						  BIT2:Wave Shape ＝0:Normal
+								＝1:for Flanger)
+	effect[ofs+3]:Feedback                    ($9D～$63:－99～＋99)
+	effect[ofs+4]:Delay Time                  (0～200),(0～50)
+	effect[ofs+5]:Dummy                         0
+	effect[ofs+6]:EQ High                     ($F4～$0C:－12～＋12)
+	effect[ofs+7]:EQ Low                      ($F4～$0C:－12～＋12)
+
+	16～17:Phase Shifter 1～2
+	effect[ofs+0]:Depth                       (0～99)
+	effect[ofs+1]:Speed                       (0～99:0.03～3.00 0.03step
+						  100～199:3.1～13.0 0.1step
+						  200～216:14.0～30.0 1.0step)
+	effect[ofs+2]:LFO Status                  (BIT0:Waveform ＝0:Sin,＝1:Tri
+						  BIT1:Phase ＝0:0.0ﾟ,＝1:180ﾟ
+						  BIT2:Wave Shape ＝0:Normal
+								＝1:for Flanger)
+	effect[ofs+3]:Feedback                    ($9D～$63:－99～＋99)
+	effect[ofs+4]:Manual                      (0～99)
+	effect[ofs+5]:Dummy                       0
+	effect[ofs+6]:Dummy                       0
+	effect[ofs+7]:Dummy                       0
+
+	18～19:Stereo Toremolo 1～2
+	effect[ofs+0]:Depth                       (0～99)
+	effect[ofs+1]:Speed                       (0～99:0.03～3.00 0.03step
+						  100～199:3.1～13.0 0.1step
+						  200～216:14.0～30.0 1.0step)
+	effect[ofs+2]:LFO Status                  (BIT0:Waveform ＝0:Sin,＝1:Tri
+						  BIT1:Phase ＝0:0.0ﾟ,＝1:180ﾟ
+						  BIT2:Wave Shape ＝0:Normal
+								＝1:for Flanger)
+	effect[ofs+3]:Shape                       ($9D～$63:－99～＋99)
+	effect[ofs+4]:Dummy                       0
+	effect[ofs+5]:Dummy                       0
+	effect[ofs+6]:EQ High                     ($F4～$0C:－12～＋12)
+	effect[ofs+7]:EQ Low                      ($F4～$0C:－12～＋12)
+
+	20:Equalizer
+	effect[ofs+0]:Dummy                       0
+	     :                                 	  :
+	effect[ofs+3]:Dummy                       0
+	effect[ofs+4]:Low fc                      (0～2:0.25k,0.50k,1.00k)
+	effect[ofs+5]:High fc                     (0～2:1k,2k,4k)
+	effect[ofs+6]:High Gain                   ($F4～$0C:－12～＋12)
+	effect[ofs+7]:Low Gain                    ($F4～$0C:－12～＋12)
+
+	21:Overdrive
+	effect[ofs+0]:Dummy                       0
+	effect[ofs+1]:Dummy                       0
+	effect[ofs+2]:Drive                       (0～99)
+	effect[ofs+3]:Level                       (0～99)
+	effect[ofs+4]:Dummy                       0
+	effect[ofs+5]:Dummy                       0
+	effect[ofs+6]:EQ High                     ($F4～$0C:－12～＋12)
+	effect[ofs+7]:EQ Low                      ($F4～$0C:－12～＋12)
+
+	22:Distortion
+	effect[ofs+0]:Dummy                       0
+	effect[ofs+1]:Dummy                       0
+	effect[ofs+2]:Distortion                  (0～99)
+	effect[ofs+3]:Level                       (0～99)
+	effect[ofs+4]:Dummy                       0
+	effect[ofs+5]:Dummy                       0
+	effect[ofs+6]:Dummy                       0
+	effect[ofs+7]:EQ Low Gain                 ($F4～$0C:－12～＋12)
+
+	23:Exciter
+
+	effect[ofs+0]:Blend                       ($9D～$63:－99～＋99)
+	effect[ofs+1]:Emphatic Point              (0～9:1～10)
+	effect[ofs+2]:Dummy                       0
+	     :                                    :
+	effect[ofs+5]:Dummy                       0
+	effect[ofs+6]:EQ High                     ($F4～$0C:－12～＋12)
+	effect[ofs+7]:EQ Low                      ($F4～$0C:－12～＋12)
+
+	24:Synphonic Ensamble
+	effect[ofs+0]:Depth                       (0～99)
+	effect[ofs+1]:Dummy                       0
+	     :                                    :
+	effect[ofs+5]:Dummy                       0
+	effect[ofs+6]:EQ High                     ($F4～$0C:－12～＋12)
+	effect[ofs+7]:EQ Low                      ($F4～$0C:－12～＋12)
+
+	25:Roteffect Speaker
+	effect[ofs+0]:Depth                       (0～99)
+	effect[ofs+1]:Dummy                       0
+	effect[ofs+2]:Speed Rate                  ($F6～$0A:－10～＋10)
+	effect[ofs+3]:Dummy                       0
+	     :                                 	  :
+	effect[ofs+7]:Dummy                       0
+
+	26:Delay/Hall
+	effect[ofs+0]:Delay Time (L)              (0～500)
+	effect[ofs+1]:Delay Time (H)
+	effect[ofs+2]:Feedback                    ($9D～$63:－99～99)
+	effect[ofs+3]:High Damp                   (0～99)
+	effect[ofs+4]:Reverb Time                 (0～97:0.2～9.9)
+	effect[ofs+5]:Dummy                       0
+	effect[ofs+6]:High Damp                   (0～99)
+	effect[ofs+7]:Pre Delay                   (0～150)
+
+	27:Delay/Room
+	effect[ofs+0]:Delay Time (L)              (0～500)
+	effect[ofs+1]:Delay Time (H)
+	effect[ofs+2]:Feedback                    ($9D～$63:－99～99)
+	effect[ofs+3]:High Damp                   (0～99)
+	effect[ofs+4]:Reverb Time                 (0～97:0.2～9.9)
+	effect[ofs+5]:Dummy                       0
+	effect[ofs+6]:High Damp                   (0～99)
+	effect[ofs+7]:Pre Delay                   (0～150)
+
+	28:Delay/Early Reflection
+	effect[ofs+0]:Delay Time (L)              (0～500)
+	effect[ofs+1]:Delay Time (H)
+	effect[ofs+2]:Feedback                    ($9D～$63:－99～99)
+	effect[ofs+3]:High Damp                   (0～99)
+	effect[ofs+4]:E/R Time                    (0～30:100～400)
+	effect[ofs+5]:Pre Delay                   (0～150)
+	effect[ofs+6]:Dummy                       0
+	effect[ofs+7]:Dummy                       0
+
+	29:Delay/Chorus
+	effect[ofs+0]:Delay Time L (L)            (0～500)
+	effect[ofs+1]:Delay Time L (H)
+	effect[ofs+2]:Feedback L                  ($9D～$63:－99～99)
+	effect[ofs+3]:High Damp L                 (0～99)
+	effect[ofs+4]:Delay Time R (L)            (0～500)
+	effect[ofs+5]:Delay Time R (H)
+	effect[ofs+6]:Feedback R                  ($9D～$63:－99～99)
+	effect[ofs+7]:High Damp R                 (0～99)
+
+	30:Delay/Chorus (31:Delay Flanger)
+	effect[ofs+0]:Delay Time (L)              (0～500)
+	effect[ofs+1]:Delay Time (H)
+	effect[ofs+2]:Feedback                    ($9D～$63:－99～99)
+	effect[ofs+3]:High Damp                   (0～99)
+	effect[ofs+4]:Depth                       (0～99)
+	effect[ofs+5]:Speed                       (0～99:0.03～3.00 0.03step
+						  100～199:3.1～13.0 0.1step
+						  200～216:14.0～30.0 1.0step)
+	effect[ofs+6]:LFO Status                  (BIT0:Waveform ＝0:Sin,＝1:Tri
+						  BIT1:Phase ＝0:0.0ﾟ,＝1:180ﾟ
+						  BIT2:Wave Shape ＝0:Normal
+								＝1:for Flanger)
+	effect[ofs+7]:Feedback                    0,($9D～$63:－99～99)
+
+	32:Delay/Phaser
+	effect[ofs+0]:Delay Time (L)              (0～500)
+	effect[ofs+1]:Delay Time (H)
+	effect[ofs+2]:Feedback                    ($9D～$63:－99～99)
+	effect[ofs+3]:High Damp                   (0～99)
+	effect[ofs+4]:Depth                       (0～99)
+	effect[ofs+5]:Speed                       (0～99:0.03～3.00 0.03step)
+	effect[ofs+6]:Feedback                    ($9D～$63:－99～99)
+	effect[ofs+7]:Dummy                       0
+
+	33:Delay/Tremolo
+	effect[ofs+0]:Delay Time (L)              (0～500)
+	effect[ofs+1]:Delay Time (H)
+	effect[ofs+2]:Feedback                    ($9D～$63:－99～99)
+	effect[ofs+3]:High Damp                   (0～99)
+	effect[ofs+4]:Depth                       (0～99)
+	effect[ofs+5]:Speed                       (0～99:0.03～3.00 0.03step)
+	effect[ofs+6]:Dummy                       0
+	effect[ofs+7]:Shape                       ($9D～$63:－99～99)
+        (M1マニュアルp127参照)
+*-----------------------------------------------------------------------------
+	int	zm_m1_print( int size,char *mes );
+
+機能	M1のSEQ-SONG0のタイトル設定
+
+引数	int size:メッセージ長(1-10)
+	char *mes:文字列格納バッファ
+
+戻り値	0:正常終了
+	0以外:エラーコード
+
+備考	メッセージは10文字以内でchar *mesからの領域に文字列を記述しておく。
+*-----------------------------------------------------------------------------
+	int	zm_send_to_m1( int port,int id );
+
+機能	M1へパラメータを送信する
+
+引数	int port:MIDIポートの番号(0-3)
+		 -1はカレントMIDI-OUTを使用
+	int id:d0-d15=DEVICE ID(0-127,-1:以前の値を使用)
+
+戻り値	0:正常終了
+	0以外:エラーコード
+
+備考    DEVICE ID＝&H30＋(グローバルチャンネル－1)
+	グローバルチャンネルとはGLOBALモードのF5－1で設定出来る。
+	idは省略可能。省略すると以前設定したものが選択される。最初の使用時に
+	省略した場合はZMUSIC内のデフォルト値$30が選択される。
+	必ず'm1_setup()'～'m1_print()'を設定してからこの命令を実行すること。
+	'm1_effect_setup()'のみ省略が可能。この時はZMUSICが持つデフォルトデータが
+	送信される。
+	'm1_setup()'～'m1_print()'の間にＭ１関係以外のコマンドがあると正常なデータが
+	送信されない。
+
+例
+        char a[8]={2,1,4,3,6,5,8,7};
+        /*音色,音量,ｷｰﾄﾗﾝｽﾎﾟｰｽﾞ,ﾃﾞﾁｭｰﾝ,ﾊﾟﾝのﾌｫｰﾏｯﾄ*/
+        char b[40]={  0,99,0,0,5,  /*TRACK 1*/
+                      0,99,0,0,5,  /*TRACK 2*/
+                      0,99,0,0,5,  /*TRACK 3*/
+                      0,99,0,0,5,  /*TRACK 4*/
+                      0,99,0,0,5,  /*TRACK 5*/
+                      0,99,0,0,5,  /*TRACK 6*/
+                      0,99,0,0,5,  /*TRACK 7*/
+                      0,99,0,0,5}; /*TRACK 8*/
+        m1_setup(a);
+        m1_part_setup(b);
+        m1_print(7,"Zenji.N");
+        send_to_m1(-1,&H30);
+*-----------------------------------------------------------------------------
+	char	*zm_pcm_read( int num,int flag,int type,int orig,char *param);
+
+機能	(AD)PCMファイルの登録
+
+引数	int num:登録番号 (トーン番号の場合:0～32767)
+			 (音色番号の場合:$8000+(0～32767)
+	int flag:(AD)PCM加工コマンド(PPC)で(AD)PCMデータ加工するか(-1:YES,0:NO)
+	int type:登録次元(-1:ADPCM,1=16BitPCM,0=V2互換)
+	int orig:オリジナルキー:0-127
+	char *param:登録データ情報およびPPC列格納バッファ(備考参照)
+
+戻り値	0以外:char *param処理後のアドレス
+	0:エラー
+
+備考	char *paramからはまず、最大32文字分の音色名文字列を格納する。
+	終端コードは0。
+	次にディスクから(AD)PCMファイルを読みこむ場合はそのファイル名を
+	格納する。終端コードは0。...(1)
+	ディスクからデータを読み込まずにすでにZMUSIC側に登録されている
+	(AD)PCMデータをコピーして加工するには音色名の後に $0000 を格納し
+	さらにその後に参照番号を指定する。...(2)
+	PPCで(AD)PCMを加工する場合には、PPC列をこの後ろに格納しておく。
+	また、PPCで(AD)PCMを加工する場合は必ずint flagを-1とすること。
+	int flagが0だとたとえPPCがあっても無視される。
+	PPCについてはMEASURE12を参照。
+
+	(1)の場合
+	[TONE NAME...最大32文字],0,[FILENAME文字列],0,PPCコマンド列...
+
+	(2)の場合
+	[TONE NAME...最大32文字],0,$00,$00,参照先番号(2bytes),PPCコマンド列...
+	参照先番号は
+	ノート番号の場合:0～32767
+	音色番号の場合:$8000+(0～32767)
+	で表される。
+*-----------------------------------------------------------------------------
+	int	zm_pcm_erase( int num );
+
+機能	(AD)PCMファイルの登録取消
+
+引数	int num:取消したい登録番号(ノート番号の場合:0～32767)
+			 	  (音色番号の場合:$8000+(0～32767)
+
+戻り値	0:正常終了
+	0以外:エラーコード
+*-----------------------------------------------------------------------------
+	int	zm_register_zpd( char *zpd );
+
+機能	ZPDの登録
+
+引数	char *zpd:登録するZPDのファイルネーム
+
+戻り値	0:正常終了
+	0以外:エラーコード
+*-----------------------------------------------------------------------------
+	int	zm_set_zpd_table( int ver,char *zpd );
+
+機能	ZPDテーブルの登録
+
+引数	int ver:ZPDバージョンタイプ(0:V1.0～V2.0,1:V3,2:PDX)
+	char *zpd:登録するZPDテーブル(ZPDヘッダ「$1a,'ZmaDPcM'」含まず)
+
+戻り値	0:正常終了
+	0以外:エラーコード
+
+備考	ZPDのテーブルの構造に付いてはMEASURE12を参照
+*-----------------------------------------------------------------------------
+	int	zm_exec_subfile( char *filename );
+
+機能	サブファイルの読み込みと実行
+
+引数	char *filename:サブファイルのファイル名
+
+戻り値	0:正常終了
+	0以外:エラーコード
+
+備考	サブファイルとは演奏の際に必要となる別ファイルにまとめた
+	補助ファイルのことを指す。具体的には、演奏ファイル(ZMS,ZMD,OPM)、
+	ADPCM定義リスト(CNF),ZPDファイル、MIDIデータファイル(MDD,MID)など。
+*-----------------------------------------------------------------------------
+	int	zm_transmit_midi_dump( int port,char *filename );
+
+機能	MIDIデータファイルの転送
+
+引数	int port:MIDIポートの番号(0-3)
+		 -1はカレントMIDI-OUTを使用
+	char *filename:MIDIデータファイルのファイル名
+
+戻り値	0:正常終了
+	0以外:エラーコード
+
+備考	MIDIデータファイルにはV1からV2で標準MIDIデータファイルと
+	されてきたMDDファイルとV3から採用されたスタンダードMIDI
+	ファイル(FORMAT0)のMIDIファイルの2タイプがあるが、
+	この関数ではどちらも楽器へ転送することができる。
+*-----------------------------------------------------------------------------
+	int	zm_set_wave_form1( int wave,char *data );
+
+機能	波形メモリの登録1
+
+引数	int wave:波形番号(8-32767)
+	char *data:波形メモリデータ格納バッファ
+
+戻り値	0:正常終了
+	0以外:エラーコード
+
+備考	char *dataで表される波形メモリデータは以下の構成を取る。
+	data+0(int):波形のデータサイズ(必ず偶数)
+	data+4(char):ループタイプ(0:oneshot,1:repeat,2:altanative)
+	data+5(int):ループ開始オフセット
+	data+9(int):ループ終了オフセット
+	data+13(int):ループ回数(0:∞,1～)
+	data+17(int):ダミー
+	data+21(char):波形名文字列長
+	data+22(?bytes):文字列(終端コード0無し)
+	偶数アドレスから実際の波形データ(signed short)
+		:
+		:
+	※本関数で登録された波形はZMUSICに取り込まれるため、関数実行後
+	波形データ本体のメモリを解放しても構わない。
+*-----------------------------------------------------------------------------
+	int	zm_set_wave_form2( int wave,char *data );
+
+機能	波形メモリの登録2
+
+引数	int wave:波形番号(8-32767)
+	char *data:波形メモリデータ格納バッファ
+
+戻り値	0:正常終了
+	0以外:エラーコード
+
+備考	char *dataで表される波形メモリデータは以下の構成は
+	zm_set_wave_form1()と同じ
+	※本関数で登録された波形はZMUSICに取り込まれないため、関数実行後
+	波形データ本体のメモリを解放してはならない。
+*-----------------------------------------------------------------------------
+	int	*zm_obtain_events( int omt,int *event );
+
+機能	各種イベントの取得
+
+引数	int omt:どのイベントに関する設定を行うかのビットマーカー
+		ビット=1でそのイベントの設定を更新する。
+	int event(8):各種イベント発生時のジャンプ先とジャンプ条件が
+		     記述された配列。構成は備考参照。
+		     -1とするとint omtによらず設定は一切行わない。
+
+戻り値	現在の設定を格納した領域のアドレス。構成は備考参照。
+
+備考	event(0):m_playが実行された時のジャンプ先アドレス		omtのd0ビット
+	event(1):m_stopが実行された時のジャンプ先アドレス		omtのd1ビット
+	event(2):m_contが実行された時のジャンプ先アドレス		omtのd2ビット
+	event(3):演奏が終了した時のジャンプ先アドレス			omtのd3ビット
+	event(4):指定ループ回数(0:OFF,1-256)				omtのd4ビット
+	event(5):指定回数ループした時のジャンプ先アドレス		omtのd5ビット
+	event(6):指定クロック(0:OFF,1～)				omtのd6ビット
+	event(7):演奏開始後指定クロック経過した時のジャンプ先アドレス	omtのd7ビット
+
+	int omtでビット=1としたパラメータのみをint event(0)から記述しておく。
+	int omtでビット=0としたパラメータに関しては記述しない。
+	たとえばint omt=$81の場合、int event(0)からは
+	event(0)に「m_playが実行された時のジャンプ先アドレス」
+	event(1)に「演奏開始後指定クロック経過した時のジャンプ先アドレス」
+	を記述しておけばよい。
+*-----------------------------------------------------------------------------
+	int	zm_loop_control( int mode );
+
+機能	現在の演奏のループを制御する
+
+引数	int mode:ループ制御モード
+		 -1=現在のループ回数を得る
+		  0=通常ループモード
+		　1=ループしない
+
+戻り値	-1以外:現在のループ回数(1～)
+	-1:エラー
+*-----------------------------------------------------------------------------
+	short	*zm_mask_tracks( short *track );
+
+機能	トラックマスク
+
+引数	short *track:マスクするトラックとマスク・モードのペアを格納したバッファ
+
+戻り値	設定出来なかったトラック番号(short int)の並びを格納した領域のアドレス
+	終端コード=-1(short)
+
+備考	short *trackからは
+	(short)トラック番号:0-65534,
+	(short)マスクモード(0:MASK OFF,1:REVERSE,-1:MASK ON)
+	の数値列を記載する。終端コードは(short)-1。
+*-----------------------------------------------------------------------------
+	int	zm_mask_all_tracks( int mode );
+
+機能	全トラックマスク
+
+引数	int mode:(0:MASK OFF,1:REVERSE,-1:MASK ON)
+
+戻り値	0:正常終了
+	0以外:エラーコード
+*-----------------------------------------------------------------------------
+	int	zm_solo_track( int track );
+
+機能	ソロトラック演奏
+
+引数	int track:トラック番号(0-65534)
+
+戻り値	0:正常終了
+	0以外:エラーコード
+*-----------------------------------------------------------------------------
+	int	*zm_mask_channels( short *channel );
+
+機能	チャンネルマスク
+
+引数	short *channel:マスクするチャンネルIDとマスク・モードのペアを
+	 	       格納したアドレス
+
+戻り値	設定出来なかった(int)チャンネルIDの並びを格納したアドレス
+	終端コード=(int)-1
+
+備考	int *channelからは
+	(int)チャンネルID,(short)マスクモード
+	の数値列を記載する。なお、チャンネルIDは
+	チャンネルID(上位16ビット):0=FM音源,1=ADPCM音源
+				   $8000=MIDI1,$8001=MIDI2
+				   $8002=MIDI3,$8003=MIDI4
+				   -1=カレントMIDI
+	チャンネルID(下位16ビット):チャンネル番号0-15
+	マスクモードは(0:MASK OFF,1:REVERSE,-1:MASK ON)	の値をとる。
+	終端コードは(short)-1。
+	たとえばMIDI1の15チャンネル(ID:$8000_000e)をマスク(ID:$ffff)、
+	ADPCMの3チャンネル(ID:$0001_0002)をマスク反転(ID:$0001)する場合は
+	{ 0x8000,0x000e,0xffff,0x0001,0x0002,0x0001,0xffff}
+	となる。
+*-----------------------------------------------------------------------------
+	void	zm_mask_all_channels( int mode );
+
+機能	全チャンネルマスク
+
+引数	int mode:(0:MASK OFF,1:REVERSE,-1:MASK ON)
+
+戻り値	0:正常終了
+	0以外:エラーコード
+*-----------------------------------------------------------------------------
+	void	zm_solo_channel( int channel );
+
+機能	ソロチャンネル演奏
+
+引数	int channel:(上位16ビット):0=FM音源,1=ADPCM音源
+				   $8000=MIDI1,$8001=MIDI2
+				   $8002=MIDI3,$8003=MIDI4
+				   -1=カレントMIDI
+	int channel:(下位16ビット):チャンネル番号0-15
+
+戻り値	0:正常終了
+	0以外:エラーコード
+*-----------------------------------------------------------------------------
+	int	zm_set_ch_output_level( char *out );
+
+機能	各チャンネルの出力レベルの設定
+
+引数	char *out:出力パラメータを記載した領域
+
+戻り値	0:正常終了
+	0以外:エラーコード
+
+備考	char *outからは以下の構成の出力パラメータを格納しておく。
+	out+0(short):デバイス(0=FM音源,1=ADPCM音源
+			      $8000=MIDI1,$8001=MIDI2
+			      $8002=MIDI3,$8003=MIDI4
+			      -1=カレントMIDI)
+	out+2(short):チャンネル番号(0-15)
+	out+4(char):パラメータ有効ビット(d0:移動速度,d1:開始レベル,d2:終了レベルに
+		    それぞれ対応しビット=1でそのパラメータが後続しこれを設定する)
+	out+5(short):移動速度(フェーダー移動速度。0で動かさない)
+	out+7(char):フェーダー移動開始レベル(0-128)
+	out+8(char):フェーダー移動終了レベル(0-128)
+*-----------------------------------------------------------------------------
+	int	zm_set_tr_output_level( char *out );
+
+機能	各トラックの出力レベルの設定
+
+引数	char *out:出力パラメータを記載した領域
+
+戻り値	0:正常終了
+	0以外:エラーコード
+
+備考	char *outからは以下の構成の出力パラメータを格納しておく。
+	out+0(short):トラック番号(0-65534)
+	out+2(char):パラメータ有効ビット(d0:移動速度,d1:開始レベル,d2:終了レベルに
+		    それぞれ対応しビット=1でそのパラメータが後続しこれを設定する)
+	out+3(short):移動速度(フェーダー移動速度。0で動かさない)
+	out+5(char):フェーダー移動開始レベル(0-128)
+	out+6(char):フェーダー移動終了レベル(0-128)
+*-----------------------------------------------------------------------------
+	int	zm_master_fader( char *fdr );
+
+機能	マスターフェーダーの設定
+
+引数	char *fdr:出力パラメータを記載した領域
+
+戻り値	0:正常終了
+	0以外:エラーコード
+
+備考	char *fdrからは以下の構成の出力パラメータを格納しておく。
+	out+0(short):デバイス(0=FM音源,1=ADPCM音源
+			      $8000=MIDI1,$8001=MIDI2
+			      $8002=MIDI3,$8003=MIDI4
+			      -1=カレントMIDI)
+	out+2(char):パラメータ有効ビット(d0:移動速度,d1:開始レベル,d2:終了レベルに
+		    それぞれ対応しビット=1でそのパラメータが後続しこれを設定する)
+	out+3(short):移動速度(フェーダー移動速度。0で動かさない)
+	out+5(char):フェーダー移動開始レベル(0-128)
+	out+6(char):フェーダー移動終了レベル(0-128)
+*-----------------------------------------------------------------------------
+	int	zm_get_fader_status( void );
+
+機能	フェーダーの状態取得
+
+引数	なし
+
+戻り値　d0,d1,d6,d7ビットに検査結果が反映される。
+
+	d0:実行中のチャンネルフェーダーすべてが目的に達している(1:達成した 0:達成していない)
+	d1:実行中のマスターフェーダーすべてが目的に達している(1:達成した 0:達成していない)
+	d6:チャンネルフェーダーの状態(1:実行中 0:実行されていない)
+	d7:マスターフェーダーの状態(1:実行中 0:実行されていない)
+*-----------------------------------------------------------------------------
+	int	zm_get_play_time( void );
+
+機能	演奏時間の取得
+
+引数	なし
+
+戻り値　16進表現で00HHMMSSという書式で返ってくる。
+	なおHH:0-99,MM:0-59,SS:0-59の値を取る。
+*-----------------------------------------------------------------------------
+	char	*zm_get_1st_comment( void );
+
+機能	演奏中の曲のコメントを取り出す
+
+引数	なし
+
+戻り値　文字列のポインタ
+	終端コードは0
+*-----------------------------------------------------------------------------
+	int	zm_get_timer_mode( void );
+
+機能	現在のテンポソースとなっているタイマの種類を返す
+
+引数	なし
+
+戻り値　0:タイマ A,1:タイマ B,2:YM3802タイマ
+*-----------------------------------------------------------------------------
+	short	*zm_get_track_table( void );
+
+機能	音楽演奏トラックテーブルのアドレスを得る
+
+引数	なし
+
+戻り値　音楽演奏トラックテーブルのアドレス
+
+備考	音楽演奏トラックテーブルには演奏に使用される(short)トラック番号が
+	(short)-1を終端コードとし羅列される。
+*-----------------------------------------------------------------------------
+	short	*zm_get_track_table_se( void );
+
+機能	効果音演奏トラックテーブルのアドレスを得る
+
+引数	なし
+
+戻り値　効果音演奏トラックテーブルのアドレス
+
+備考	効果音演奏トラックテーブルには演奏に使用される(short)トラック番号が
+	(short)-1を終端コードとし羅列される。
+*-----------------------------------------------------------------------------
+	char	*zm_get_play_work( int track );
+
+機能	音楽演奏トラックワークのアドレスを得る
+
+引数	int track:トラック番号(0-65534)
+
+戻り値　音楽演奏トラックワークのアドレス
+
+備考	音楽演奏トラックワークの内容と構成に付いてはMEASURE13を参照のこと。
+*-----------------------------------------------------------------------------
+	char	*zm_get_play_work_se( int track );
+
+機能	効果音演奏トラックワークのアドレスを得る
+
+引数	int track:トラック番号(0-65534)
+
+戻り値　効果音演奏トラックワークのアドレス
+
+備考	効果音演奏トラックワークの内容と構成は音楽演奏トラックと同一。
+*-----------------------------------------------------------------------------
+	char	*zm_get_buffer_information( void );
+
+機能	バッファ・アドレステーブルのアドレス
+
+引数	なし
+
+戻り値　バッファ・アドレステーブルのアドレス
+
+備考	バッファ・アドレステーブルの構成に付いてはMEASURE13を参照のこと
+*-----------------------------------------------------------------------------
+	char	*zm_zmsc_status( void );
+
+機能	ZMUSICの状態ワークのアドレス
+
+引数	なし
+
+戻り値　ZMUSICの状態ワークのアドレス
+
+備考	ZMUSICの状態ワークのアドレスの構成に付いてはMEASURE13を参照のこと
+*-----------------------------------------------------------------------------
+	int	zm_calc_total( char *zmd,char **result);
+
+機能	ZMDの演奏時間やトータルステップタイムなどの計算
+
+引数	char *zmd:ZMDの先頭アドレス(ヘッダはあってもなくてもよい)
+	char **result:戻り値を格納するための変数
+
+戻り値	0:正常終了
+	0以外:発生したエラーの数
+
+備考	・戻り値が0の場合はchar **resultには計算結果データ列を格納した領域の
+	　ポインタが返される。計算結果データ列の構成に付いてはMEASURE10
+	  ファンクションZM_CALC_TOTALの項を参照のこと。
+	・戻り値が0以外の場合はchar **resultにはエラーの内容を格納した
+	　エラーテーブルのアドレスが返される。
+	　エラーテーブルの構成に付いてはMEASURE11を参照のこと。
+	・いずれの場合もchar **resultに返された領域は使用後free_mem()などで
+	　解放すること。
+	・この関数はコンパイラに含まれる外部組み込みのファンクションと
+	　であるため、使用前にはコンパイラの常駐を確認する必要がある。
+*-----------------------------------------------------------------------------
+	int	zm_register_application( char *addr,int *result);
+
+機能	外部アプリケーションの常駐解除ルーチンの登録
+
+引数	char *addr:外部アプリケーションの常駐解除ルーチンの先頭アドレス
+	int *result:戻り値を格納するための変数
+
+戻り値	0:エラー
+	0以外:正常終了
+
+備考	・ZMUSICが常駐解除する時に同時に解除出来るようにするための手続き。
+	　ZMUSICが常駐解除するときchar *addrのルーチンにエントリする。
+	・int *resultには登録IDが返される。このIDは常駐解除ルーチンの
+	　登録をキャンセル「zm_unregister_application()」する場合に用いる。
+	・char *addrから始まる各解放ルーチンは必要処理を実行後、最後に
+	　ZMUSIC側で解放してほしいメモリブロックがあるならば
+	　そのアドレスをa0.lにかえすようにすること。
+	　なければa0.l=0を返すこと
+	・char *addrからの解放ルーチンの実行後に、なにか表示したい
+	　メッセージが有る場合はその文字列のアドレスをa1.lに返すようにすること。
+	　なければa1.l=0を返すこと
+	・char *addrからの解放ルーチンでエラーが発生した場合は戻り値として
+	　d0.l(0:no error,1:occupied,-1:error)を返すことが出来る。
+	　エラーが発生した場合もその旨を告げるメッセージ文字列をa1.lに
+	　与えることが出来る。
+*-----------------------------------------------------------------------------
+	int	zm_unregister_application( int result);
+
+機能	外部アプリケーションの常駐解除ルーチンの登録キャンセル
+
+引数	int result:zm_register_application()の戻り値
+
+戻り値	0:エラー
+	0以外:正常終了
+*-----------------------------------------------------------------------------
+	int	zm_release_driver( char **zmsc );
+
+機能	ZMUSICの解除
+
+引数	char **zmsc:ZMUSICの常駐解除アドレス
+
+戻り値	0:正常終了
+	0以外:エラーコード(常駐解除失敗)
+
+備考	char **zmscで示される領域をシステムのメモリ解放コールを呼び出して
+	解放した時点でZMUSICの常駐解除が完全に行われたことになる。
+*-----------------------------------------------------------------------------
+	int	zm_occupy_zmusic( int mode );
+
+機能	ZMUSICの占有
+
+引数	int mode:1=占有する,0=占有を解除する,-1=占有状態の検査
+
+戻り値	mode=0,1のとき:以前の占有状態(0=占有されていない,1=占有されている)
+	mode=-1のとき:現在の占有状態(0=占有されていない,1=占有されている)
+*-----------------------------------------------------------------------------
+	char	*zm_hook_fnc_service( int fnc,char *job );
+
+機能	ZMUSICのファンクションコールのフック
+
+引数	int fnc:ファンクション番号(0-127)
+	char *job:ユーザーファンクションのエントリ・アドレス
+		  -1とすると設定は行わずint fncで指定したファンクション番号の
+		  ファンクションのエントリ・アドレスのみを返す。
+
+戻り値	フック前のファンクション・エントリ・アドレス
+	0ならば空いていた。
+	-1はエラー
+*-----------------------------------------------------------------------------
+	char	*zm_hook_zmd_service( int zmd,char *job );
+
+機能	ZMDオペレーションのフック
+
+引数	int zmd(下位16ビット):ZMDコード-128(0-127)
+	int zmd(上位16ビット):(0:FM,1:ADPCM,2:MIDI,
+			       -1:共通コマンド,-2:効果音用共通コマンド,
+			       -3:制御コマンド)
+	char *job:ユーザーZMDオペレーションのエントリ・アドレス
+		  -1とすると設定は行わずint zmdで指定したZMDコードの
+		  オペレーションのエントリ・アドレスのみを返す。
+
+戻り値	フック前のZMDオペレーション・エントリ・アドレス
+	0ならば空いていた。
+	-1はエラー
+*-----------------------------------------------------------------------------
+	int	zm_occupy_compiler( int mode );
+
+機能	コンパイラの占有
+
+引数	int mode:1=占有,0=占有解除,-1=占有状態検査
+
+戻り値	mode=0,1のとき:以前の占有状態(mode=-1の時を参照)
+	mode=-1のとき:0=占有されていない,1=占有されている
+*-----------------------------------------------------------------------------
+	int	zm_store_error( int err,int noferr,char **addr );
+
+機能	エラーコードのストア
+
+引数	int err(上位16):エラーの発生したファンクション番号(0-32767)
+	       (下位16):エラーコード(0-65535)
+		int err=-1とした場合は問い合わせのみでストアは行わない
+	int noferr:エラーの合計個数値に幾つ加算するか
+	char **addr:エラーストックバッファの先頭アドレスを格納する変数
+
+戻り値	現在ストックしているエラーの個数
+
+備考	・本関数はユーザーアプリケーション側で発生したエラーをZMUSIC側に
+	　知らせたい場合に使用する。ただしその場合、エラーコードフォーマットは
+	　MEASURE11で示してある形式に従わなければならない。
+	・エラーコードに関してはMEASURE11を参照。
+*-----------------------------------------------------------------------------
+int	zm_print_error( int mode,int lang,int noferr,
+			char *ZMD,char *srcaddr,char *srcname,
+			char *errtbl
+			char **buff);
+
+機能	エラーメッセージの表示
+
+引数	int mode:メッセージの出力先(0:画面,1:バッファ)
+	int lang:メッセージの言語(0:英語,1:日本語)
+	int noferr:エラーの数
+	char *zmd:ZMDのファイル名(無い場合は0)
+	char *srcaddr:ソース(ZMS)のアドレス(無い場合は0)
+	char *srcname:ソース(ZMS)ファイル名(無い場合は0)
+	char *errtbl:エラーストックバッファの先頭アドレス
+	char **buff:出力バッファの先頭アドレスを格納する変数
+		    (int mode=1の時のみ有効,バッファの終端には0)
+
+戻り値	出力バッファのサイズ。ただし終端の0は含まない。
+
+備考	エラーテーブルからエラーメッセージを得る場合などに使用する。
+	char *zmd～char *srcnameは通常の外部アプリケーションならば0でよい。
+	コンパイラなどの場合はそれらを正しく設定すればタグジャンプに
+	対応した出力を得ることが出来る。
+*-----------------------------------------------------------------------------
+	char	*zm_get_mem( int size,int emply );
+
+機能	メモリの確保
+
+引数	int size:確保サイズ
+	int emply:確保するメモリの用途ID
+
+戻り値	0:確保に失敗した
+	0以外:確保したメモリブロックのアドレス
+
+備考	メモリの用途IDはMEASURE10 ファンクションZM_GET_MEMの項を参照のこと。
+	ZMUSICに無関係のメモリブロックを確保する場合ならば当関数を
+	用いる必要はない。
+*-----------------------------------------------------------------------------
+	char	*zm_enlarge_mem( int size,char *addr );
+
+機能	メモリブロックのサイズの変更
+
+引数	int size:変更後のサイズ
+	char *addr:zm_get_mem()で確保したメモリのアドレス
+
+戻り値	確保しなおしたメモリブロックのアドレス
+	0ならば確保に失敗した事を意味する
+
+備考	・メモリブロックのサイズを大きくした場合などはメモリブロックの
+	　再配置が自動で行われる。そのためchar *addrで与えられたメモリブロックが
+	　別のアドレスに移動する場合がある。よってこの関数を実行後は
+	　char *addrを戻り値のアドレス値に置き換えるべきである。
+	・変更に失敗した場合は、char *addrのメモリブロックの内容は保証される。
+*-----------------------------------------------------------------------------
+	int	zm_free_mem( char *addr );
+
+機能	メモリブロックの解放
+
+引数	char *addr:zm_get_mem()で確保したメモリのアドレス
+
+戻り値	0:解放成功
+	0以外:エラーコード
+*-----------------------------------------------------------------------------
+	int	zm_free_mem2( int emply );
+
+機能	特定の用途IDを持ったメモリブロックの解放
+
+引数	int emply:メモリの用途ID
+
+戻り値	0:解放成功
+	0以外:エラーコード
+
+備考	メモリの用途IDはMEASURE10 ファンクションZM_GET_MEMの項を参照のこと。
+*-----------------------------------------------------------------------------
+	int	zm_exchange_memid( int mode,int s_emply,int d_emply,char *addr );
+
+機能	メモリブロックの用途IDの変更
+
+引数	int mode:変更モード(0:チェックなしで変更,1:チェックしてから更新
+			    -1:int s_emplyの用途IDを持つメモリブロックをすべて
+			       int d_emplyの用途IDへ変更する)
+	int s_emply:更新元メモリの用途ID(int mode=0の場合は意味なし)
+	int d_emply:希望メモリの用途ID
+	char *addr:zm_get_mem()で確保したメモリのアドレス
+
+戻り値	0:変更成功
+	0以外:エラーコード
+
+備考	メモリの用途IDはMEASURE10 ファンクションZM_GET_MEMの項を参照のこと。
+*-----------------------------------------------------------------------------
+	void	zm_init_all( void )
+
+機能	ZMUSICの全初期化を行う
+
+引数	なし
+
+戻り値	Z-MUSICのバージョンID
+
+備考	通常のアプリケーションは本関数を利用する必要はない
+	バージョンIDはたとえばバージョン3.21ならば $00003241となる。
+	4の部分は固定値。
+*-----------------------------------------------------------------------------
+	void	zm_int_start( int tmtype );
+
+機能	割り込み開始制御
+
+引数	int tmtype:制御対象タイマータイプ
+		   (-1:音楽タイマ,0:音楽+効果音タイマ,1:効果音タイマ)
+
+戻り値	なし
+
+備考	通常のアプリケーションは本関数を利用する必要はない
+*-----------------------------------------------------------------------------
+	void	zm_int_stop( int tmtype );
+
+機能	割り込み停止制御
+
+引数	int tmtype:制御対象タイマータイプ
+		   (-1:音楽タイマ,0:音楽+効果音タイマ,1:効果音タイマ)
+
+戻り値	なし
+
+備考	通常のアプリケーションは本関数を利用する必要はない
+*-----------------------------------------------------------------------------
+	int	zm_set_int_service( int clock,int tempo,char *entry );
+
+機能	ユーザ割り込みサービスの設定
+
+引数	int clock:全音符のクロック数(1-65535)
+	int tempo:テンポ(1-32767)
+	char *entry:ユーザー割り込みルーチンのエントリアドレス
+
+戻り値	0:設定正常終了
+	0以外:設定失敗
+
+備考	・割り込みルーチンの最後はRTEではならない。かならず全レジスタを
+	　保存した上でRTSで終了帰還するような作りにすること。
+	・char *entry=-1とした場合はすでに登録されている割り込みサービスの
+	　割込み周期をint clock,int_tempoで変更する機能を果たす。
+*-----------------------------------------------------------------------------
+	char	*zm_check_int_service( void );
+
+機能	ユーザ割り込みサービスの状態検査
+
+引数	なし
+
+戻り値	0:空いている
+	0以外:現在登録されているユーザ割込みルーチンのエントリアドレス
+*-----------------------------------------------------------------------------
+	int	zm_release_int_service( char *entry );
+
+機能	ユーザ割り込みサービスの登録解除
+
+引数	char *entry:登録したユーザー割り込みルーチンのエントリアドレス
+
+戻り値	0:登録解除正常終了
+	0以外:登録解除失敗
+*-----------------------------------------------------------------------------
+	int	zm_control_tempo( int mode );
+
+機能	テンポ設定の主導権設定
+
+引数	int mode:-1=テンポ設定の主導権を外部アプリケーションに委託
+		　0=テンポ設定の主導権をZMUSICに戻す
+		    (このとき内部パラメタでテンポの初期化も実施する)
+
+戻り値	0:設定正常終了
+	0以外:設定失敗
+*-----------------------------------------------------------------------------
+void	zm_convert_pcm( int mode, int size, char *source, char *destination );
+
+機能	PCMデータの変換を行う
+
+引数	int mode:変換モード(0:ADPCM to PCM,1:PCM TO ADPCM)
+	int size:変換元の(AD)PCMのデータサイズ
+	char *source:変換元となる(AD)PCMデータの格納領域アドレス
+	char *destination:変換先となる(AD)PCMデータの格納領域アドレス
+
+戻り値	なし
+*-----------------------------------------------------------------------------
+	int	zm_work(int track,int offset);
+
+機能	演奏トラックワークの内容取得
+
+引数	int track:トラック番号(0-65534)
+	int offset:演奏トラックワークオフセット
+
+戻り値	ワーク内容(0～255)
+
+備考	演奏トラックワークの内容と構成に付いてはMEASURE13を参照のこと。
+*-----------------------------------------------------------------------------
+	int	zm_exec_zmd( int track,int size,char *zmd);
+
+機能	ZMD列の実行
+
+引数	int track:トラック番号(0-65534,65535:特に指定しない場合)
+	int size:ZMD列の長さ
+	char *zmd:ZMD列格納バッファ(バッファ自体はd2.l+8の大きさを必要とする)
+
+戻り値	なし
+*-----------------------------------------------------------------------------
+
+
+１６．４．ＺＭＳＣ３ＬＩＢ．ＤＥＦの利用法
+
+
+  ZMUSIC Ver.3.0を利用したX-BASIC(MUSICZ3.FNC)のプログラムをコンパイルする時に
+
+使用する。まず、自分のシステムの、BC.X(X-BASICをＣ言語へコンバートするプログ
+
+ラム、Ｃ言語PRO68Kに付属)が格納してあるディレクトリにZMSC3LIB.DEFをコピーする。
+
+例
+	A>COPY ZMSC3LIB.DEF A:\BC
+
+  そのディレクトリ内のBASIC.CNFというファイルを開き
+
+	FUNC=ZMSC3LIB
+
+の１行を加えてセーブする。BASIC.CNF中に
+
+	FUNC=MUSIC
+	FUNC=MUSIC2
+	FUNC=MUSIC3
+	FUNC=ZMUSIC
+
+などが記述してある場合は、それらをすべて削除する(同名の関数が存在していると
+
+誤動作する可能性があるため)。
+
+
+１６．５．ＺＭＳＣ３ＬＩＢ．Ｌの利用法
+
+
+  コンパイルする時にライブラリファイルとして利用するには、まず自分のシステムの
+
+ライブラリファイルが格納してあるディレクトリにZMSC3LIB.Lをコピーする。
+
+例
+	A>COPY ZMSC3LIB.L A:\LIB
+
+  コンパイルしてできるオブジェクトにZMSC3LIB.Lをリンクし実行ファイルを得るには、
+
+例	ZMSC3.Xを使用したX-BASIC(MUSICZ3.FNC)のプログラムをコンパイルする場合
+
+	A>CC ????.BAS ZMSC3LIB.L
+
+例	ZMSC3.Xを使用したＣ言語のプログラムをコンパイルする場合
+
+	A>CC ????.C ZMSC3LIB.L
+
+のようにする。

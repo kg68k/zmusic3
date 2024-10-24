@@ -1,0 +1,1187 @@
+
+	    ＭＥＡＳＵＲＥ１３
+
+	ワークエリアとワークビュアZSV.R
+
+
+　ここでは演奏トラックワークとその他のZMUSIC Ver.3.0の
+
+ワーク、ワークビュアZSV.Rについての解説を行います。
+
+
+
+
+
+
+
+
+
+
+
+１３．１．  演奏トラックワーク
+
+[注意]
+
+・文中の(.b)(.w)(.l)および(ds.b)(ds.w)(ds.l)等はデータ長を表している。
+
+(ds.b)/(.b)  バイトサイズ
+(ds.w)/(.w)  ワードサイズ(２バイト)
+(ds.l)/(.l)  ロングワードサイズ(４バイト)
+
+・[]で表される数値はデフォルトであることを意味する。
+
+・1つのワークアドレスに２つ以上のワークが設定されていることがある。
+
+・具体的なワークへのアクセス法はリスト１、リスト２のようにして行う。
+-----------------------------リスト1----------------------------------
+Z_MUSIC macro   func    *ZMUSIC Ver.3.0のファンクションコール・マクロ
+        moveq.l func,d0
+        trap    #3
+        endm
+
+        moveq.l #n,d1			*トラック番号:0≦n≦65534
+	Z_MUSIC	#ZM_GET_PLAY_WORK
+
+*アクセス例
+
+        move.w  p_step_time(a0),d0    *トラックnのある瞬間の
+                                      *ステップタイムを得る
+----------------------------------------------------------------------
+
+-----------------------------リスト2----------------------------------
+Z_MUSIC macro   func    *ZMUSIC Ver.3.0のファンクションコール・マクロ
+        moveq.l func,d0
+        trap    #3
+        endm
+
+        moveq.l #0,d1  			*トラック番号＝1
+        Z_MUSIC #ZM_GET_PLAY_WORK	*a0:トラック１の演奏トラックワークの
+					*先頭アドレス
+        move.l  a0,seq_wk_tbl		*ベースアドレスとなるのでこれを格納
+
+      *トラック12のワーク先頭アドレスを求める時
+      movea.l seq_wk_tbl(pc),a0		*ベースアドレス取り出し
+      moveq.l #11,d0			*トラック番号12(内部表現では11)
+      lsl.w   #trwk_size_,d0            *1トラック分の演奏トラックワークサイズ
+      adda.w  d0,a0              	*a0:トラック12のワーク先頭アドレス 
+
+*アクセス例
+      move.w  p_step_time(a0),d0	*トラック12のある瞬間の
+                            		*ステップタイムを得る
+
+seq_wk_tbl:   ds.l    1			*ベースアドレス退避エリア
+----------------------------------------------------------------------
+
+・ワークの不当な書き替えは、演奏に支障をきたすだけでなく、ZMUSICの暴走を
+
+  引き起こす可能性もあるため、細心の注意を必要とする。また、特殊な使用目的
+
+以外では、各ワークは読み出し専用と考え、書き替えはなるべく行わないように
+
+したほうがよい。
+
+  各ワークは、必ずしも使用されているとは限らず、条件によっては、そのワークが
+
+持つ値は何の意味も持たない場合がある。例えばPMOD(ピッチモジュレーション,
+
+ビブラート)のスイッチp_pmod_sw(.b)がOFF(0)の場合、PMOD関連ワークに格納されて
+
+いる値は何の意味も持たない。
+
+  また、MMLやコマンドで与えたパラメータ値とワーク内部で表現される
+
+内部表現形式とは多少の食い違いがあるので注意すること。例えば音色番号は
+
+MMLでは1～32768であるが、ワーク(内部表現)では1引いた0～32767となっている。
+
+・自作プログラムからZMUSIC Ver.3.0のワークを参照する場合は以下に示すワーク
+
+アドレス名 をラベル定義化した LABEL.MAC をインクルードするとよい。
+
+----------------ノートワーク--------------------------------------------------
+p_note:		ds.b	4*16	*ノートオンテーブル
+
+・ノートワークp_noteは以下の構成を取る
+
+k_note		ds.b	1	*.b ノートオンしたノートナンバー[-1]
+				*   (実際にKey OFFされるとd7=1)
+k_velo:		ds.b	1	*.b 発音ベロシティ[-1]
+				*   (ゲートタイムが0になるとd7=1)
+k_gate_time:	ds.w	1	*.w gate time[?]
+				*   (tieは1回の割り込み内では0,
+				*    割り込みを出ると-1)
+----------------基本パラメータ------------------------------------------------
+p_step_time:	ds.w	1	*.w ステップタイム
+p_track_stat:	ds.b	1	*.b トラックステータス
+				*($00:演奏中 $80:死亡 $01:終了
+				* $02:停止中 $40:同期待ち)
+p_track_mode:	ds.b	1	*.b トラックモード($80:Keyoff無し $00:通常)
+p_trkfrq:	ds.b	1	*.b 割り込み頻度(マスタワーク)
+p_trkfrq_wk:	ds.b	1	*.b 割り込み頻度(実行ワーク)
+p_type:		ds.w	1	*.w 音源種別
+				*(FM:0 ADPCM:1 MIDI1～4:$8000～$8003
+				* PATTERN:$7fff)
+p_ch:		ds.w	1	*.w チャンネル番号(0～32767)
+p_data_pointer:	ds.l	1	*.l 現在のコマンドポインタアドレス
+p_now_pointer:	ds.l	1	*.l 現在実行中のCMDのアドレス
+----------------アフタータッチシーケンス関連----------------------------------
+p_trk_seq_flg:	ds.b	1	*.b d7:VSEQ処理フラグ
+p_aftc_n:	ds.b	1	*.b ｱﾌﾀｰﾀｯﾁｼｰｹﾝｽのポインタ(-1,0～7)
+p_aftc_omt:	ds.b	1	*.b ｱﾌﾀｰﾀｯﾁｼｰｹﾝｽ省略フラグ[0]
+p_aftc_rltv:	ds.b	1	*.b ｱﾌﾀｰﾀｯﾁｼｰｹﾝｽ相対値フラグ[0]
+p_aftc_flg:	ds.b	1	*.b ｱﾌﾀｰﾀｯﾁｼｰｹﾝｽ動作フラグ[0]
+				*d0 ｱﾌﾀｰﾀｯﾁｼｰｹﾝｽ 初めてか違うか([0]:はじめて 1:違う)
+				*d5 ｱﾌﾀｰﾀｯﾁｼｰｹﾝｽ 休符時に同期するか(1:Yes,[0]:No)
+				*d6 ｱﾌﾀｰﾀｯﾁｼｰｹﾝｽ タイ時に同期するか(1:Yes,[0]:No)
+				*d7 ｱﾌﾀｰﾀｯﾁｼｰｹﾝｽ キーオン毎に同期するか([1]:Yes,0:No)
+p_aftc_level:	ds.b	1	*.b 現在実行中のアフタータッチ値[-1]
+p_aftc_tbl:	ds.b	8	*.b ｱﾌﾀｰﾀｯﾁｼｰｹﾝｽ値テーブル*8
+p_aftc_sw:	ds.b	1	*.b ｱﾌﾀｰﾀｯﾁｼｰｹﾝｽのｽｲｯﾁ
+				*   ([0]=OFF,$ff=1/8 MODE ON,$01=OPTIONAL MODE ON)
+p_aftc_sw2:	ds.b	1	*.b ｱﾌﾀｰﾀｯﾁｼｰｹﾝｽのｽｲｯﾁ保存ワーク
+				*   ([0]=OFF,$ff=1/8 MODE ON,$01=OPTIONALMODE ON)
+p_aftc_1st_dly:	ds.w	1	*.w ｱﾌﾀｰﾀｯﾁｼｰｹﾝｽ初期ディレイ[0]
+p_aftc_8st_tbl:	ds.w	8	*.w ｱﾌﾀｰﾀｯﾁｼｰｹﾝｽﾃﾞｨﾚｲ値*8
+p_aftc_dly2:	ds.w	1	*.w ｱﾌﾀｰﾀｯﾁｼｰｹﾝｽﾃﾞｨﾚｲﾜｰｸ
+p_aftc_syncnt:	ds.w	1	*.w 同期カウント	([1]～65535)
+p_aftc_syncnt2:	ds.w	1	*.w 同期カウント実行ワーク([1]～65535)
+		ds.l	1
+----------------ピッチモジュレーション(ビブラート)関連------------------------
+p_pmod_dpndpt:	ds.w	1	*.w PMOD振幅増減モードの加算量(-32768～[0]～32767)
+p_pmod_dpt_tbl:	ds.w	8	*8w PMOD振幅値ﾃｰﾌﾞﾙ [0]
+p_pmod_dpnspd:	ds.w	1	*.w PMOD振幅増減モードの振幅値加算周期([0]-32767)
+p_pmod_spd_tbl:	ds.w	8	*8w PMODｽﾋﾟｰﾄﾞ値ﾃｰﾌﾞﾙ[mod_dflt]
+p_pmod_dpt_now:	ds.w	1	*.w PMOD現在の実行振幅値[0]
+p_pmod_wf:	ds.w	1	*.w PMOD波形タイプ[2]
+				*   プリセット波形:0～7
+				*   ユーザー波形:$8000+(0-32767)
+p_pmod_1st_dly:	ds.w	1	*.w PMOD初期ディレイ [0]
+p_pmod_8st_tbl:	ds.w	8	*8w PMODの振幅変化ディレイ
+p_pmod_stp_tbl:	ds.l	8	*8l PMOD加算ステップ値ﾃｰﾌﾞﾙ
+				*   (波形タイプ=矩形波,ノイズ,波形メモリでは
+				*    振幅値が格納される)
+p_pmod_sw:	ds.b	1	*.b PMOD･ｽｲｯﾁ
+				*   ([0]=OFF,$ff=1/8 MODE ON,$01=OPTIONAL MODE ON)
+p_pmod_sw2:	ds.b	1	*.b PMOD･ｽｲｯﾁ保存
+				*   ([0]=OFF,$ff=1/8 MODE ON,$01=OPTIONAL MODE ON)
+p_pmod_chain:	ds.b	1	*.b PMODの接続ﾌﾗｸﾞ
+				*   (-1:波形接続完了,0:即接続可能,1:接続待機中,[2]:初回)
+p_pmod_flg:	ds.b	1	*.b PMODの動作フラグ[0]
+				*d0 PMOD 初めてか違うか([0]:はじめて,1:違う)
+				*d1 PMOD 振幅を増加減衰させるモード([0]:OFF,1:ON)
+				*d2 PMOD 波形接続可能か([0]:No,1:Yes)
+				*d3 PMOD 波形の値を休符の時も更新([0]:NO,1:YES)
+				*d4 PMOD 波形の値をキーオン毎に更新するモード([0]:OFF,1:ON)
+				*d5 PMOD 休符時に同期するか(1:Yes,[0]:No)
+				*d6 PMOD タイ時に同期するか(1:Yes,[0]:No)
+				*d7 PMOD キーオン毎に同期するか([1]:Yes,0:No)
+p_pmod_mode:	ds.b	1	*.b MIDI PMODモード
+				*   ([-1]:通常,0:FM互換拡張,1:MIDI互換拡張)
+p_pmod_omt:	ds.b	1	*.b 1/8 MODE,OPTIONAL MODEの省略ビットパターン
+				*   (振幅一個の時は[$01])
+p_pitch_last:	ds.w	1	*.w 前回出力したベンダー値 [-1]
+p_pmod_step2:	ds.l	1	*.l PMOD実行ｽﾃｯﾌﾟ(Fixed)
+p_pmod_dly2:	ds.w	1	*.w PMOD･ﾃﾞｨﾚｲ実行ﾜｰｸ
+p_pmod_spd:	ds.w	1	*.w PMOD･ｽﾋﾟｰﾄﾞ
+p_pmod_spd2:	ds.w	1	*.w PMOD･ｽﾋﾟｰﾄﾞﾜｰｸ
+p_pmod_pitch:	ds.l	1	*.l PMOD･ﾋﾟｯﾁﾜｰｸ(Fixed)
+p_pmod_step_next: ds.l	1	*.l 次にくる予定のステップ
+p_pmod_spd_next:  ds.w	1	*.w 次にくる予定のスピード
+p_wvpm_start:	ds.l	1	*.l 波形メモリ開始アドレス
+p_wvpm_point:	ds.l	1	*.l 波形メモリ現在のポインタ
+p_wvpm_end:	ds.l	1	*.l 波形メモリ終了アドレス
+		ds.b	1
+p_wvpm_lpmd:	ds.b	1	*.b 波形メモリループモード
+p_wvpm_lpst:	ds.l	1	*.l 波形メモリループ開始アドレス
+p_wvpm_lped:	ds.l	1	*.l 波形メモリループ終了アドレス
+p_wvpm_lptm:	ds.l	1	*.l 波形メモリループ回数(0=∞)
+p_wvpm_lptm2:	ds.l	1	*.l 波形メモリループ回数実行ワーク(0=∞)
+p_altp_flg:	ds.b	1	*.b 波形メモリ反復モードフラグ
+p_pmod_n:	ds.b	1	*.b 8ﾎﾟｲﾝﾄ･PMOD･ﾃｰﾌﾞﾙﾎﾟｲﾝﾀ(-1,0～7)
+p_pmod_wf2:	ds.w	1	*.w PMOD実行波形タイプ[2]
+				*   プリセット波形:0～7
+				*   ユーザー波形:$8000+(0-32767))
+p_pmod_dpnrpt:	ds.w	1	*.w 振幅増減処理を何回行うか(0～32767,[0]:∞)
+p_pmod_rndcnt:	ds.w	1	*.w 波形が何周したか(0-32767)
+p_pmod_dpntime:	ds.w	1	*.w 増減処理を何回行ったか(0-65535)
+p_pmod_syncnt:	ds.w	1	*.w 同期カウント	([1]～65535)
+p_pmod_syncnt2:	ds.w	1	*.w 同期カウント実行ワーク([1]～65535)
+		ds.l	16
+
+p_arcc_param:	ds.b	__arcc_len*4	*ARCCワーク
+					*(構成つにいては後述)
+p_vseq_param:	ds.b	__arcc_len	*ｴﾝﾊﾝｽﾄﾞ･ﾍﾞﾛｼﾃｨ･ｼｰｹﾝｽ･ﾜｰｸ
+					*(構成つにいては後述)
+----------------ポルタメント&ディチューン関係----------------------------------
+p_detune:	ds.w	1	*.w デチューン(オートベンドの開始値にもなる)[0]
+p_special_tie:	ds.w	1	*.w MIDI専用のスペシャル・タイ用ピッチワーク[0]
+p_port_dly:	ds.w	1	*.w ポルタメントディレイ[0]
+p_port_cnt:	ds.w	1	*.w ポルタメント継続時間[0]
+p_bend_dly:	ds.w	1	*.w ベンドディレイ値[0]
+p_bend_cnt:	ds.w	1	*.w ベンドテイル/ベンドタイム[0]
+p_port2_dly:	ds.w	1	*.w ｵｰﾄﾎﾟﾙﾀﾒﾝﾄディレイ[0]
+p_port2_cnt:	ds.w	1	*.w ｵｰﾄﾎﾟﾙﾀﾒﾝﾄテイル/ｵｰﾄﾎﾟﾙﾀﾒﾝﾄタイム[0]
+p_port_pitch:	ds.l	1	*.l ﾎﾟﾙﾀﾒﾝﾄ/ｵｰﾄﾍﾞﾝﾄﾞ用
+				*   現在のベンド値*65536(Fixed)[0]
+p_port_flg:	ds.b	1	*.b ﾎﾟﾙﾀﾒﾝﾄｵﾝかｵﾌか
+				*   ([0]=OFF,1=Normal Delay,-1=Minus Delay)
+p_port2_flg:	ds.b	1	*.b ｵｰﾄﾎﾟﾙﾀﾒﾝﾄｽｲｯﾁ([0]=OFF,1=ON)
+p_bend_sw:	ds.b	1	*.b ｵｰﾄﾍﾞﾝﾄﾞがｵﾝかｵﾌか([0]=OFF,1=ON)
+				*   d7:初めてか(bit=0:初めて)
+p_agogik_flg:	ds.b	1	*.b アゴーギクビットワーク[0]
+				*d0 Agogik主導権フラグ([0]=No/1=Yes)
+				*d2 Agogik 小節線発見時にリセットするか
+				*   (1:Yes,[0]:No)
+				*d3 Agogik 波形の値を休符の時も更新
+				*   ([0]:No,1:Yes)
+				*d4 Agogik 波形の値をキーオン毎に更新するモード
+				*   ([0]:OFF,1:ON)
+				*d5 Agogik 休符時に同期するか(1:Yes,[0]:No)
+				*d6 Agogik タイ時に同期するか(1:Yes,[0]:No)
+				*d7 Agogik キーオン毎に同期するか(1:Yes,[0]:No)
+p_bend_dst:	ds.w	1	*.w オートベンドのレンジ
+				*   (オートベンドの目的値となる)
+		ds.w	1	*
+p_port_step:	ds.l	1	*.l ポルタメント用実行ステップ*65536
+		ds.l	16
+----------------一般パラメータ-------------------------------------------------
+p_measure:	ds.l	1	*.l 現在の小節番号[0]
+
+p_voice_rsv:	ds.w	1	*.w FM/ADPCM音源トラックのボイスリザーブ数
+				*   ([0]～7)
+p_next_on:	ds.b	1	*.b FM/ADPCM音源トラックの次回の発音チャンネル
+				*   [0]
+p_timbre_set:
+				*d7:Bank Selectの設定が行われたか(MIDI)
+				*d6:Programチェンジが行われたか(MIDI)
+				*d5:Volume設定が行われたか(MIDI)
+				*d4:Panpot設定が行われたか(MIDI)
+				*d3:Damper設定が行われたか(MIDI)
+p_tone_set:	ds.b	1	*.b 第nﾋﾞｯﾄをチャンネルnとして
+				*   音色を設定したかどうかのフラグ(FM)[0]
+
+p_return:	ds.l	1	*.l gosubの次のアドレス[0]
+
+p_transpose:	ds.b	1	*.b キートランスポーズ[0]
+p_mask_mode:	ds.b	1	*.b Mask Modeかどうか([0]=Normal,1=Masked)
+p_damper:	ds.b	1	*.b damper on or off ([0]～63:OFF/64～127:ON)
+p_seq_flag:	ds.b	1	*.b []コマンド系の処理フラグビットパターン[0]
+				*d0:[D.C.]処理をしたことがあるか([0]=no/1=yes)
+				*d1:[FINE]処理をすべきかどうか([0]=no/1=yes)
+				*d2:[!]フラグ([0]=OFF/1=実行中)
+p_bank_msb:	ds.b	1	*.b MIDI Bank MSB [-1]
+p_bank_lsb:	ds.b	1	*.b MIDI Bank LSB [-1]
+p_pgm:		ds.w	1	*.w Program Number([0]-32767)
+
+p_sync_wk:	ds.b	1	*.b 強制同期コマンド用ワーク[1]
+p_@b_range:	ds.b	1	*.b ベンドレンジ[12]
+p_vol16:	ds.b	1	*.b 16段階音量(0-16),[-1]=無効(127段階音量モード)
+p_velo16:	ds.b	1	*.b 16段階ベロシティ(0-16),[-1]=無効
+				*   (127段階ベロシティモード)
+p_do_loop_flag:	ds.b	1	*.b [DO]が以前に設定されているか
+				*   [0]=NO/ループ回数(1～255)
+p_md_flg:	ds.b	1	*.b 各種ビットワーク[0]
+				*d0 @B:ﾍﾞﾝﾄﾞ値をﾘｾｯﾄすべきかどうか
+				*   (MIDI専用 [0]=No/1=Yes)
+				*d1 @M:ﾓｼﾞｭﾚｰｼｮﾝ値をﾘｾｯﾄするかしないか
+				*   (MIDI専用 [0]=No/1=Yes)
+				*   ↑(それぞれ関係CTRLに0以外の値を
+				*      出力した時にビットが1になる)
+				*d2 ADPCM Variable Tuning Mode ([0]:NOT)
+				*d3 OPMスロットマスクの切り換え
+				*d4 MIDI Tie Mode([0]:Normal,1:Special)
+				*d5 FM/ADPCMでVoice Reserveを行ったか([0]:No/1:Yes)
+				*d7 音色スプリットモード([0]:OFF,1:ON
+p_how_many:	ds.b	1	*.b 今何音キーオンしているか
+				*   ([-1]:None/0～7:1～8)
+p_last_note:	ds.b	1	*.b 前回発音したノート番号([-1])
+----------------MIDI専用関係--------------------------------------------------
+p_maker:	ds.b	1	*.b ﾒｰｶｰID(MIDI)[-1]
+p_device:	ds.b	1	*.b ﾃﾞﾊﾞｲｽID(MIDI)[-1]
+p_module:	ds.b	1	*.b ﾓｼﾞｭｰﾙID(MIDI)[-1]
+p_effect1:	ds.b	1	*.b Effect Parameter 1(GS:RVB)	[-1]
+p_effect3:	ds.b	1	*.b Effect Parameter 3(GS:CHO)	[-1]
+p_effect4:	ds.b	1	*.b Effect Parameter 4(GS:DLY)	[-1]
+p_effect2:	ds.b	1	*.b Effect Parameter 2	[-1]
+p_effect5:	ds.b	1	*.b Effect Parameter 5	[-1]
+----------------一般パラメータ-------------------------------------------------
+p_timbre_src:	ds.b	1	*.b 音色のコピー元チャンネルオフセット(FM:0-7)
+p_sync:		ds.b	1	*.b OPM-LFOのシンクスイッチ(0=off,1=on)
+p_om:		ds.b	1	*.b オペレータマスク(&b0000-&b1111)
+		ds.b	1
+
+p_vol:		ds.b	1	*.b 127段階音量(0-127)	[??]
+p_velo:		ds.b	1	*.b ベロシティ(0-[127])
+p_frq:		ds.b	1	*.b ADPCMの周波数(0-6)	[4]
+p_pan:		ds.b	1	*.b Last PANPOT(0～127,-1=MUTE)[64]
+
+p_onoff_bit:	ds.b	1	*キーオン／オフビットワーク
+				*d7:Key ONのときにbit=1が上書きされる
+				*d6:Key OFFのときにbit=1が上書きされる
+p_om_bak:	ds.b	1	*.b p_omのバックアップ
+p_Q_gate:	ds.w	1	*.w Qコマンドの値(CONVERTER専用)
+				*   (0-256:NORMAL Q,負値:@Q)
+p_midi_if:	ds.w	1	*.w ユーザからみたMIDIインターフェース番号(0-3)
+
+p_do_loop_ptr:	ds.l	1	*.l [DO]のある位置
+p_int_play_ope:	ds.l	1	*.l 演奏処理ﾙｰﾁﾝｱﾄﾞﾚｽ
+				*   通常はソースZMSC2.HAS中のint_play_ope_fm,
+				*   int_play_ope_ad,int_play_ope_midi
+p_midi_trans:	ds.l	1	*.l MIDI送信ルーチン
+
+p_total:	ds.l	1	*.l トータルステップタイム
+p_total_olp:	ds.l	1	*.l ﾙｰﾌﾟ外のﾄｰﾀﾙｽﾃｯﾌﾟｲﾑ
+
+p_split_tbl:	ds.b	48	*.l 音色スプリットの管理ワーク
+				*   音色スプリットの管理ワークは以下の構成を取る
+				*.b 割り当てる開始ノートナンバー
+				*   (0-127,128で残り全部)
+				*.b 割り当てる終端ノートナンバー
+				*   (0-127,128で残り全部)
+				*.w 割り当てるBANK番号
+				*   (MIDI:0-16383/FM,ADPCM:0-255)
+				*.w 割り当てる音色番号
+				*   (MIDI:0-127/FM,ADPCM:0-127 or 0-32767)
+				*以上6バイトが8つ続く
+p_lfo_param:			*以下２バイトペアワーク
+p_pitch_param:	ds.w	1	*音程関係の特殊処理フラグ
+p_level_param:	ds.w	1	*音量関係の特殊処理フラグ
+p_key_on:	ds.l (16+1)*2	*これから発音する音の
+				*ノート番号(.b),
+				*ベロシティ(.b),
+				*チャンネルオフセット(.w)
+				*音色番号(.l)
+				*が格納される。
+				*ただしチャンネルオフセットはFM/ADPCMのみで有効、
+				*MIDIでは常に0となる。
+				*例えば p_ch の内容が3のとき
+				*チャンネルオフセットが2の時、実際の発音は
+				*チャンネル5(=3+2)で行われる。p_ch の内容が
+				*3のときチャンネルオフセットが6の時、実際の
+				*発音はチャンネル2=(=(3+6) and 7)で行われる。
+		ds.b	64
+p_user:		ds.b	1	*.b ユーザー汎用ワーク
+
+・ARCCとエンハンスド・ベロシティ・シーケンスは以下に示したARCCのワーク構成と
+  全く同じ構成を取る。なお、ARCC関連のワークは p_arcc_param から、エンハンスド
+  ベロシティ・シーケンスは p_vseq_param から開始される。
+　p_arcc_paramは、ARCCが1トラックにつき4つ実装されていることから、以下の構成の
+　ワークがARCC1からARCC4まで順番に4つ連続して並ぶことになる。
+
+----------------ARCC(AMOD)/ENHANCED VELOCITY SEQUENCE関連----------------------
+p_arcc_wf:	ds.w	1	*.w ARCC波形タイプ
+				*　 プリセット波形:0～7
+				*   ユーザー波形:$8000+(0-32767))[2]
+p_arcc_dpndpt:	ds.b	1	*.b ARCC振幅増減モードの加算量(-128～[0]～127)
+p_arcc_dpt_tbl:	ds.b	8	*.b ARCC振幅値ﾃｰﾌﾞﾙ*8 [0]
+		ds.b	1
+p_arcc_dpnspd:	ds.w	1	*.w ARECC振幅増減モードの振幅値加算周期([0]-32767)
+p_arcc_spd_tbl:	ds.w	8	*.w ARCCｽﾋﾟｰﾄﾞ値テーブル [mod_dflt]
+p_arcc_dpt_now:	ds.b	1	*.b ARCC現在の実行振幅値[0]
+p_arcc_flg2:	ds.b	1	*.b ARCC動作フラグ2
+				*d0 ARCC波形位相([0]:Normal,[1]:Reverse)
+				*d7 ARCC波形接続可能か([0]:No,1:Yes)
+p_arcc_mode:	ds.b	1	*.b MIDI ARCCモード([-1]:通常,0～127:拡張)
+p_arcc_omt:	ds.b	1	*.b 1/8 MODE,OPTIONAL MODEの省略ビットパターン[$01]
+p_arcc_1st_dly:	ds.w	1	*.w ARCC初期ディレイ [0]
+p_arcc_8st_tbl:	ds.w	8	*.w ARCCの振幅変化ディレイ
+p_arcc_stp_tbl:	ds.w	8	*.w ARCC加算ステップ値ﾃｰﾌﾞﾙ
+				*   (波形タイプ=矩形波,ノイズ,波形メモリでは
+				*    振幅値が格納される)
+p_arcc_step2:	ds.w	1	*.w ARCC実行ｽﾃｯﾌﾟ
+p_arcc_spd:	ds.w	1	*.w ARCCｽﾋﾟｰﾄﾞ
+p_arcc_spd2:	ds.w	1	*.w ARCCﾋﾟｰﾄﾞﾜｰｸ
+p_arcc_dly2:	ds.w	1	*.w ARCCﾃﾞｨﾚｲﾜｰｸ
+p_arcc_level:	ds.w	1	*.w ARCCﾎﾟｲﾝﾄﾜｰｸ
+p_arcc_o:	ds.w	1	*.w ARCC波形スタート値(ノコギリ波,三角波専用)
+p_arcc_sw:	ds.b	1	*.b ARCCスイッチ
+				*   ([0]=OFF,$ff=1/8 MODE ON,$01=OPTIONAL MODE ON)
+p_arcc_sw2:	ds.b	1	*.b ARCCスイッチ保存
+				*   ([0]=OFF,$ff=1/8 MODE ON,$01=OPTIONAL MODE ON)
+p_arcc_chain:	ds.b	1	*.b ARCCの接続ﾌﾗｸﾞ
+				*   (-1:波形接続完了,0:即接続可能,1:接続待機中,[2]:初回))
+p_arcc_flg:	ds.b	1	*.b ARCC動作フラグワーク
+				*d0 ARCC初めてか違うか([0]:はじめて,1:違う)
+				*d1 ARCC振幅を増加減衰させるモード([0]:OFF,1:ON)
+				*d2 ARCCのリセット要請([0]:No [1]:Yes)
+				*d3 ARCC波形の値を休符の時も更新([0]:No,1:Yes)
+				*d4 ARCC波形の値をキーオン毎に更新するモード
+				*   ([0]:OFF,1:ON)
+				*d5 ARCC 休符時に同期するか(1:Yes,[0]:No)
+				*d6 ARCC タイ時に同期するか(1:Yes,[0]:No)
+				*d7 ARCC キーオン毎に同期するか([1]:Yes,0:No)
+				*(ベロシティシーケンスのときのd6は以下のように扱われる。
+				*d6 VSEQ VELOCITYを与えられてる時も進行させるか([0]:no,1:yes)
+p_arcc_last:	ds.b	1	*.b 前回出力したARCC値(MIDI)[-1]
+p_arcc_reset:	ds.b	1	*.b ARCCのリセット値([0])
+p_arcc_origin:	ds.b	1	*.b ARCC基準値([127])
+p_arcc:		ds.b	1	*.b ARCCのコントロールナンバー([11]=Expression)
+p_arcc_o_next:	ds.w	1	*.w 次にくる予定の波形開始点
+p_arcc_step_next: ds.w	1	*.w 次にくる予定のステップ
+p_arcc_spd_next:  ds.w	1	*.w 次にくる予定のスピード
+p_wvam_start:	ds.l	1	*.l 波形メモリ開始アドレス
+p_wvam_point:	ds.l	1	*.l 波形メモリ現在のポインタ
+p_wvam_end:	ds.l	1	*.l 波形メモリ終了アドレス
+		ds.b	1
+p_wvam_lpmd:	ds.b	1	*.b 波形メモリループモード
+p_wvam_lpst:	ds.l	1	*.l 波形メモリループ開始アドレス
+p_wvam_lped:	ds.l	1	*.l 波形メモリループ終了アドレス
+p_wvam_lptm:	ds.l	1	*.l 波形メモリループ回数(0=∞)
+p_wvam_lptm2:	ds.l	1	*.l 波形メモリループ回数実行ワーク(0=∞)
+p_alta_flg:	ds.b	1	*.b 波形メモリ反復モードフラグ
+p_arcc_n:	ds.b	1	*.b ARCCﾃｰﾌﾞﾙﾎﾟｲﾝﾀ(-1,0～7)
+p_arcc_wf2:	ds.w	1	*.w 次にくる予定の波形タイプ[2]
+p_arcc_dpnrpt:	ds.w	1	*.w 振幅増減処理を何回行うか
+				*   (0～32767,[0]:∞)
+p_arcc_rndcnt:	ds.w	1	*.w 波形が何周したか(0-32767)
+p_arcc_dpntime:	ds.w	1	*.w 増減処理を何回行ったか(0-65535)
+p_arcc_syncnt:	ds.w	1	*.w 同期カウント	([1]～65535)
+p_arcc_syncnt2:	ds.w	1	*.w 同期カウント実行ワーク([1]～65535)
+		ds.l	16
+
+１３．２．  バッファアドレステーブル
+
+
+  ファンクション ZM_GET_BUFFER_INFORMATION(MEASURE10参照)でZMUSIC Ver.3.0の
+
+各バッファのアドレスを知ることができる。
+
+  ここでは、これらのバッファの構造や役割についての解説をする。
+
+  自作プログラムからZMUSIC Ver.3.0のバッファアドレステーブルを参照する場合は
+
+以下に示すワーク名をラベル定義化した COMMON.MAC をインクルードするとよい。
+------------------------------------------------------------------------------
+trk_buffer_top:		ds.l	1	*トラックバッファ先頭アドレス
+trk_buffer_size:	ds.l	1	*トラックバッファサイズ
+trk_buffer_end:		ds.l	1	*トラックバッファ最終アドレス
+adpcm_buffer_top:	ds.l	1	*(AD)PCMバッファ先頭アドレス
+adpcm_buffer_size:	ds.l	1	*(AD)PCMバッファサイズ
+adpcm_buffer_end:	ds.l	1	*(AD)PCMバッファ最終アドレス
+wave_memory_top:	ds.l	1	*波形メモリバッファ先頭アドレス
+wave_memory_size:	ds.l	1	*波形メモリバッファサイズ
+wave_memory_end:	ds.l	1	*波形メモリバッファ最終アドレス
+seq_wk_tbl:		ds.l	1	*音楽演奏トラックワーク先頭アドレス
+seq_wk_tbl_se:		ds.l	1	*効果音演奏トラックワーク先頭アドレス
+play_trk_tbl:		ds.l	1	*どのトラックを演奏するのかを表すテーブル
+play_trk_tbl_se:	ds.l	1	*どのトラックを演奏するのかを表すテーブル(効果音)
+adpcm_tbl:		ds.l	1	*(AD)PCMトーンのアドレステーブル[0]
+adpcm_n_max:		ds.w	1	*定義できる最大トーン数[0]
+adpcm_tbl2:		ds.l	1	*(AD)PCM音色のアドレステーブル[0]
+adpcm_n_max2:		ds.w	1	*定義できる最大音色数[0]
+wave_tbl:		ds.l	1	*波形メモリデータのテーブルアドレス
+wave_n_max:		ds.w	1	*波形メモリの定義最大個数
+fmsnd_buffer:		ds.l	1	*FM音色バッファ
+fmsnd_n_max:		ds.w	1	*FM音色バッファの定義最大個数
+lyric_address:		ds.l	1	*歌詞文字列データアドレス
+lyric_size:		ds.l	1	*歌詞文字列データサイズ
+					*(文字列は0で終わらない場合有り)
+trk_po_tbl:		ds.l	1	*各トラックの先頭アドレス格納テーブルアドレス
+trk_po_tbl_se:		ds.l	1	*各トラックの先頭アドレス格納テーブルアドレス
+trk_n_max:		ds.w	1	*トラックの個数
+pattern_trk:		ds.l	1	*パターントラックアドレス[0]
+pattern_trk_se:		ds.l	1	*パターントラックアドレス効果音[0]
+m_buffer_0:		ds.l	1	*CZ6BM1-0用の送信バッファ
+m_buffer_1:		ds.l	1	*CZ6BM1-1用の送信バッファ
+m_buffer_r:		ds.l	1	*RS232C-MIDI用の送信バッファ
+			ds.l	1	*RESERVED
+			ds.l	1	*RESERVED
+			ds.l	1	*RESERVED
+			ds.l	1	*RESERVED
+			ds.l	1	*RESERVED
+rec_buffer_0:		ds.l	1	*CZ6BM1-0用の受信バッファ
+rec_buffer_1:		ds.l	1	*CZ6BM1-1用の受信バッファ
+rec_buffer_r:		ds.l	1	*RS232C-MIDI用の受信バッファ
+			ds.l	1	*RESERVED
+			ds.l	1	*RESERVED
+			ds.l	1	*RESERVED
+			ds.l	1	*RESERVED
+			ds.l	1	*RESERVED
+mm0_adr:		ds.l	1	*CZ6BM1-0用のチャンネルワーク
+mm1_adr:		ds.l	1	*CZ6BM1-1用のチャンネルワーク
+mmr0_adr:		ds.l	1	*RS232C-MIDI A用のチャンネルワーク
+mmr1_adr:		ds.l	1	*RS232C-MIDI B用のチャンネルワーク
+			ds.l	1	*RESERVED
+			ds.l	1	*RESERVED
+			ds.l	1	*RESERVED
+			ds.l	1	*RESERVED
+n_of_err:		ds.l	1	*発生しているエラーの数
+err_stock_next:		ds.l	1	*次のエラー格納アドレス
+err_stock_addr:		ds.l	1	*エラーストックバッファ先頭アドレス
+err_stock_size:		ds.l	1	*エラーストックバッファサイズ
+------------------------------------------------------------------------------
+
+●トラックバッファ
+
+  トラックバッファはZMDを格納するために確保されている。
+
+  外部アプリケーションで確保したメモリ領域をZMUSIC Ver.3.0から参照させるには
+
+	(trk_buffer_top)＝メモリ領域の先頭アドレス
+	(trk_buffer_size)＝メモリ領域のサイズ
+	(trk_buffer_end)＝メモリ領域の最終アドレス
+
+を設定する。
+
+
+●演奏トラックワーク
+
+  演奏中の演奏データの各トラックのワーク。ZMUSIC Ver.3.0はVer.2.0とは異なり
+
+演奏に使用されているトラック数しか演奏トラックワークは存在しない。
+
+１本のトラックにつき、ZMUSIC Ver.3.0のソースリストLABEL.MAC中に定義されている
+
+trwk_sizeの数だけ(Ver.3.0時点で2048)バイトのワークが割り当てられている。
+
+各ワークの役割と構成については１３．１．を参照のこと。
+
+	(seq_wk_tbl)＋トラック番号(0～)×trwk_size
+
+で任意のトラックのワーク先頭アドレスを求めることができる。
+
+
+●効果音トラックワーク
+
+  効果音の演奏トラックワーク。トラック数はZMSC3.X組み込み時の-Fスイッチで
+
+指定された数だけ存在する。役割と構成、ワークサイズはまったく演奏トラック
+
+ワークと同等。
+
+
+●(AD)PCMバッファ
+
+  (AD)PCMバッファにはZPDなどの(AD)PCMデータが格納される。
+
+  外部アプリケーションで確保したメモリ領域をZMUSIC Ver.3.0から参照させるには
+
+	(adpcm_buffer_top)＝メモリ領域の先頭アドレス
+	(adpcm_buffer_size)＝メモリ領域のサイズ
+	(adpcm_buffer_end)＝メモリ領域の最終アドレス
+
+を設定する。
+
+
+●(AD)PCM管理テーブル
+
+  adpcm_tblは音色番号1～256,ノート番号0～127に割り当てられた(AD)PCMトーンを
+
+管理するワーク。
+
+  adpcm_tbl2はバンク0～255,音色番号1～128に割り当てられた(AD)PCM音色を管理する
+
+ワーク。
+
+  音色番号1のノート番号0からノート番号127まで順番に以下の構成が繰り返す。
+
+音色番号1のノート番号127の次は音色番号のノート番号0からノート番号127までが
+
+続く。以下バンク127,127までこれを繰り返されている。
+
+　ただし、実際に(AD)PCMが格納されているノート番号を含むバンクまでしか領域は
+
+保証されない。
+
+  (AD)PCM音色についても、バンク0,0の音色番号1～128からバンク127,127の音色番号
+
+1～128までが同様の構成を取る。
+------------------------------------------------------------------------------
+adt_type:		ds.b	1	*データタイプ:0=empty,-1=adpcm,1=16bitPCM
+adt_orig_key:		ds.b	1	*オリジナルキー:0-127
+			ds.b	1	*Reserved
+			ds.b	1	*Reserved
+adt_addr:		ds.l	1	*データアドレス
+adt_size:		ds.l	1	*サイズ
+adt_loop_start:		ds.l	1	*ループ開始ポイント
+adt_loop_end:		ds.l	1	*ループ終端ポイント
+adt_loop_time:		ds.l	1	*ループ回数
+			ds.b	8	*Reserved
+adt_name:		ds.b	32	*コメント
+------------------------------------------------------------------------------
+  1つの(AD)PCMデータに対して割り当てられるワークサイズが64バイトであることから
+
+任意の音色番号b(1～256)、ノート番号n(0～127)に対応する(AD)PCMトーンの管理ワーク
+
+アドレスは
+
+	(adpcm_tbl)＋(b－1)×128×64＋n×64
+
+で求めることができる。同様に任意のバンク番号b(0～255)、音色番号tの(AD)PCM音色の
+
+管理ワークアドレスは
+
+	(adpcm_tbl2)＋b×128×64＋t×64
+
+で求めることができる。
+
+  自作プログラムから上記のオフセットテーブルを利用して(AD)PCM管理テーブルを
+
+参照する場合はソースリストに含まれる TABLE.MAC をインクルードするとよい。
+
+
+●波形メモリ管理テーブル
+
+  wave_tblは波形番号8～255に割り当てられた波形メモリデータ列を管理するワーク。
+
+1つの波形につき以下のようなワーク構成を取っている。これが、連続して
+
+波形番号8から波形番号255まで続く。
+------------------------------------------------------------------------------
+wave_start_addr:	ds.l	1	*波形の開始アドレス(.l)
+wave_end_addr:		ds.l	1	*波形の最終アドレス+2(.l)
+			ds.b	1	*リザーブ
+wave_loop_type:		ds.b	1	*ループタイプ(.w)
+wave_loop_start:	ds.l	1	*ループ開始アドレス(.l)
+wave_loop_end:		ds.l	1	*ループ最終アドレス+2(.l)
+wave_loop_time:		ds.l	1	*ループ回数
+			ds.l	1	*リザーブ
+			ds.b	1	*リザーブ
+wave_name_len:		ds.b	1	*波形名称文字列長(.w)
+wave_name_addr:		ds.l	1	*波形名称文字列格納アドレス(.l)
+------------------------------------------------------------------------------
+　なお、波形のアドレス等は全て絶対番地で表されている。ループタイプ値は0～2で
+
+与えたものが －1,0,＋1 にシフトされている点に注意。
+
+  1つの波形に対して割り当てられるワークサイズは64バイトであることから任意の
+
+波形番号w(8～255)に対応したワークアドレスは
+
+	(wave_tbl)＋(w-8)×64
+
+にて求めることができる。
+
+  自作プログラムから上記のオフセットテーブルを利用して波形メモリ管理テーブルを
+
+参照する場合はソースリストに含まれる TABLE.MAC をインクルードするとよい。
+
+
+●ＦＭ音源音色バッファ
+
+  fmsnd_bufferはFM音源音色を格納するバッファで、音色データが以下に示すような
+
+フォーマットで格納されている。バンク0の音色番号1からバンク255の音色番号128
+
+(または音色番号1から32768)までが順番に続く。ただし、fmsnd_n_maxの値で表される
+
+音色番号の分までしかバッファは確保されていない。
+------------------------------------------------------------------------------
+fm_flag:	ds.w	1	*音色有効フラグ
+fm_LFRQ:	ds.b	1	*LFRQ
+fm_PMD:		ds.b	1	*PMD
+fm_AMD:		ds.b	1	*AMD
+fm_SYNC_OM_WF:	ds.b	1	*d0-d1:WF,d3-d6:OM,d7:SYNC
+fm_PAN_AF:	ds.b	1	*d0-d5:AF,d6-d7:PAN
+fm_PMS_AMS:	ds.b	1	*d0-d1:AMS,d4-d6:PMS
+fm_OP1_DT1_MUL:	ds.b	1	*OP1 d0-d3:MUL,d4-d7:DT1
+fm_OP3_DT1_MUL:	ds.b	1	*OP3 d0-d3:MUL,d4-d7:DT1
+fm_OP2_DT1_MUL:	ds.b	1	*OP2 d0-d3:MUL,d4-d7:DT1
+fm_OP4_DT1_MUL:	ds.b	1	*OP4 d0-d3:MUL,d4-d7:DT1
+fm_OP1_TL:	ds.b	1	*OP1 TL
+fm_OP3_TL:	ds.b	1	*OP3 TL
+fm_OP2_TL:	ds.b	1	*OP2 TL
+fm_OP4_TL:	ds.b	1	*OP4 TL
+fm_OP1_KS_AR:	ds.b	1	*OP1 d0-d4:AR,d6-d7:KS
+fm_OP3_KS_AR:	ds.b	1	*OP3 d0-d4:AR,d6-d7:KS
+fm_OP2_KS_AR:	ds.b	1	*OP2 d0-d4:AR,d6-d7:KS
+fm_OP4_KS_AR:	ds.b	1	*OP4 d0-d4:AR,d6-d7:KS
+fm_OP1_AME_1DR:	ds.b	1	*OP1 d0-d4:D1R,d7:AMS-EN
+fm_OP3_AME_1DR:	ds.b	1	*OP3 d0-d4:D1R,d7:AMS-EN
+fm_OP2_AME_1DR:	ds.b	1	*OP2 d0-d4:D1R,d7:AMS-EN
+fm_OP4_AME_1DR:	ds.b	1	*OP4 d0-d4:D1R,d7:AMS-EN
+fm_OP1_DT2_2DR:	ds.b	1	*OP1 d0-d4:D2R,d6-d7:DT2
+fm_OP3_DT2_2DR:	ds.b	1	*OP3 d0-d4:D2R,d6-d7:DT2
+fm_OP2_DT2_2DR:	ds.b	1	*OP2 d0-d4:D2R,d6-d7:DT2
+fm_OP4_DT2_2DR:	ds.b	1	*OP4 d0-d4:D2R,d6-d7:DT2
+fm_OP1_D1L_RR:	ds.b	1	*OP1 d0-d3:RR,d4-d7:D1L
+fm_OP3_D1L_RR:	ds.b	1	*OP3 d0-d3:RR,d4-d7:D1L
+fm_OP2_D1L_RR:	ds.b	1	*OP2 d0-d3:RR,d4-d7:D1L
+fm_OP4_D1L_RR:	ds.b	1	*OP4 d0-d3:RR,d4-d7:D1L
+fm_NAME:	ds.b	1	*音色名文字列(最大16文字)
+------------------------------------------------------------------------------
+　1音色につき48バイトをとるので任意のバンク番号b(0-255)、音色番号t(1-128)
+
+の音色データのアドレスは
+
+	(fmsnd_buffer)＋b×128×48+(t-1)*48
+
+で求められる(バンク番号を用いないでしていする場合は上の式中の「b×128×48」を
+
+取って考える)。
+
+  自作プログラムから上記のオフセットテーブルを利用してFM音源音色バッファを
+
+参照する場合はソースリストに含まれる TABLE.MAC をインクルードするとよい。
+
+
+●各トラックの先頭アドレス
+
+  各トラックの先頭アドレスはtrk_po_tblに格納されているアドレスから
+
+トラック１の先頭アドレス(.L)
+トラック２の先頭アドレス(.L)
+トラック３の先頭アドレス(.L)
+	：
+	：
+
+のように格納されている。(効果音トラックの場合はtrk_po_tbl_se)
+
+  よって、任意のトラック番号tのトラックの先頭アドレスは
+
+	(trk_po_tbl)＋t×4
+
+で求めることができる。
+
+
+●演奏に使用されるトラック
+
+　実際の演奏に使用されているトラック番号は、play_trk_tblに格納されている
+
+アドレスから、$ffff(.w)Endcodeとし、ワードサイズで列記されている。例えば
+
+トラック番号1～8が演奏されているとするとplay_trk_tblに格納されているアドレスから
+
+	$0000 $0001 $0002 $0003 $0004 $0005 $0006 $0007 $ffff
+
+のような値が格納されている。トラック番号1～8が0～7になっている点に注意。
+
+
+１３．３．　ZMUSICの状態ワーク
+
+
+  ファンクション ZM_GET_ZMSC_STATUS(MEASURE10参照)でZMUSIC Ver.3.0の
+
+状態ワーク(ステータスワーク)のアドレスを知ることができる。状態ワークは
+
+その時点に置けるZMUSICの状態を表したワークエリアで、フェーダー関連の
+
+パラメータやカレントMIDI、テンポ等のグローバルパラメータなどもここに
+
+配置されている。
+
+  ここでは、これらのワークの構造や役割についての解説をする。
+
+  自作プログラムからZMUSIC Ver.3.0の状態ワークを参照する場合は以下に示す
+
+状態ワーク名をラベル定義化した ZM_STAT.MAC をインクルードするとよい。
+------------------------------------------------------------------------------
+midi_board:		dc.b	0	*MIDI I/F有効フラグ
+					*d0～d3がそれぞれCZ6BM1 #1,#2,RS232C-MIDI A,Bに対応
+available_device:	dc.b	0	*実際に使用するデバイスフラグ(midi_boardと同じ書式)
+timer_flg:		dc.b	0	*TIMER ON/OFF(d0:TIMER A,d1:TIMER B,d2:YM3802 TIMER)
+					*(d7はFUNC INTERCEPT_PLAYが有効時にm_playが実行されると
+					*1に上書きされる。外部アプリ向け専用ワークビット)
+			dc.b	0
+wk_size:	dc.w	trwk_size	*1トラックワークのサイズ
+play_start_time:	dc.l	-1	*演奏開始時刻 (10時23分52秒ならば$00102352,初期値=-1)
+play_stop_time:		dc.l	-1	*演奏停止時刻 (10時23分52秒ならば$00102352,初期値=-1)
+play_cont_time:		dc.l	-1	*演奏再開時刻 (10時23分52秒ならば$00102352,初期値=-1)
+dev_end_adr:		ds.l	1	*ZMSC3.X最終アドレス
+t_min:			dc.w	10	*音楽演奏用テンポの最小値	(デフォルト値はMIDI
+t_max:			dc.w	32767	*音楽演奏用テンポの最大値	14bitタイマが
+t_min_se:		dc.w	20	*効果音演奏用テンポの最小値	採択された時の場合)
+t_max_se:		dc.w	5000	*効果音演奏用テンポの最大値
+_@t_max:		dc.w	$3fff	*音楽演奏用タイマ値の最大値
+_@t_max_se:		dc.w	$ff	*効果音演奏用タイマ値の最大値
+mask_opm_ch:		dc.w	0	*FM音源のマスクチャンネル対応ビット
+					*d0～d7がチャンネル1～8に対応。対応ビット=1:Masked
+se_tr_max:		dc.w	0	*効果音の最大トラック数[0]
+ext_pcmdrv:		dc.b	0	*外部PCMドライバ([0]:NO 1:組み込まれている)
+current_rs232c_part:	dc.b	1	*RS232Cの現在の選択パート
+					*0:PART A,$FF:PART B,[1]:未定義
+current_midi_in_r:	dc.w	-1	*カレント相対I/F番号(USERから見た0-3)
+current_midi_in_w:	dc.b	-1	*通常は常時0
+current_midi_in_b:	dc.b	-1	*カレント絶対I/F番号(内部で使用する(0-3)*2)
+current_midi_out_r:	dc.w	-1	*カレント相対I/F番号(USERから見た0-3)
+current_midi_out_w:	dc.b	-1	*通常は常時0
+current_midi_out_b:	dc.b	-1	*カレント絶対I/F番号(内部で使用する(0-3)*2)
+midi_if_tbl:		dcb.b	8+1,-1	*MIDIインターフェースの使用設定
+					*(0:CZ6BM1-1,2:CZ6BM1-2,4:RS232C-A,6:RS232C-B,-1:なし)
+ch_wk_mode:		dc.b	-1	*チャンネルワークの使用状態
+					*-1=全部(DEFAULT),0=FM無し(通常禁止)
+					*1=MIDI無し,2=全部無し(通常禁止)
+gs_id:		dc.b	$10,$10,$10,$10	*DEVICE IDデフォルト値
+		ds.b	4		*Reserved
+sc88_id:	dc.b	$10,$10,$10,$10
+		ds.b	4		*Reserved
+mt32_id:	dc.b	$10,$10,$10,$10	*
+		ds.b	4		*Reserved
+u220_id:	dc.b	$10,$10,$10,$10	*
+		ds.b	4		*Reserved
+m1_id:		dc.b	$30,$30,$30,$30	*
+		ds.b	4		*Reserved
+adpcm_frq:	dc.b	0		*ADPCM周波数
+adpcm_pan:	dc.b	0		*ADPCMパンポット
+adpb_clr:	dc.b	0		*ADPCMバッファ初期化有無フラグ(0以外=要初期化)
+wvmm_clr:	dc.b	0		*波形メモリバッファ初期化有無フラグ(0以外=要初期化)
+
+meter:		dc.w	$0404		*拍子
+metronome:	dc.b	0		*Reserved
+		dc.b	0		*Reserved
+key:		dc.w	0		*調号
+mst_clk:	dc.w	192		*全音符の絶対音長カウント
+tempo_value:	dc.w	120		*テンポ値(DEFAULT=120)
+timer_value:	dc.w	0		*タイマの値
+
+meter_se:	dc.w	$0404		*拍子(効果音サイド)
+metronome_se:	dc.b	0		*Reserved
+		dc.b	0		*Reserved
+key_se:		dc.w	0		*調号
+mst_clk_se:	dc.w	192		*全音符の絶対音長カウント(効果音サイド)
+tempo_value_se	dc.w	120		*テンポ値(DEFAULT=120)
+timer_value_se:	dc.w	0		*タイマの値
+eox_w:		dcb.w	8,3		*EOXウェイト(DEFAULT=3)
+se_mode:	dc.b	0		*ADPCMの効果音モードか(0=NO,0以外=YES)
+fader_flag:	dc.b	0		*現在実行中のフェーダー
+					*(d7:マスターフェーダー,d6:チャンネルフェーダー)
+					*実行中のフェーダーに対応したビット=1で
+					*そのフェーダーが可動中
+fnc_no:		dc.w	$7fff		*最後に実行した(あるいは現在実行中の)ﾌｧﾝｸｼｮﾝ番号
+sr_type:	dc.w	$2500		*SRをマスクする際のデフォルト値(普通は書き変わる)
+sp_buf:		dc.l	0		*ファンクション実行時のスタック保存ワーク
+fnc_quit_addr:	dc.l	0		*緊急帰還アドレス(エラーが発生した場合の脱出アドレス)
+opmset_bsr_ms:	dc.l	opmset		*FM音源ｱｸｾｽ ﾙｰﾁﾝ ｱﾄﾞﾚｽ(効果音モード時opmset_se)
+timer_mode:	dc.b	0		*どのタイマーを使うか
+					*タイマA:-1,タイマB:0,YM3802タイマ:1
+synchro_mode:	dc.b	0		*外部同期モードか(0=NO,$FF=YES)
+polypress_mode:	dc.b	-1		*ポリフォニックプレッシャーモード([-1]:ON,0=NO)
+no_init_mode:	dc.b	0		*初期化無しモードか([0]=NO,0以外=YES)
+zmusic_int:	dc.l	0		*ZMUSICが割り込むとインクリメントされる
+last_zmusic_int:	dc.l	0	*前回MIDI_INP1を実行したときのzmusic_intの値
+zpd_last_fn:	ds.b	54		*前回読み込んだファイルの名前
+header_buffer:	ds.b	8		*ファイルID用バッファ
+fm_tune_tbl:	dc.l	0		*FM音源周波数調整テーブル
+pcm_tune_tbl:	dc.l	0		*PCM音源周波数調整テーブル
+occupy_flag:	dc.b	0		*占有状態(0=FREE,1=占有されている)
+cmd_or_dev:	dc.b	0		*-1=コマンドライン,0=DEVICE
+errmes_lang:	dc.b	0		*メッセージ表示言語([0]:English,1:Japanese)
+external_applications:	dc.b	0	*外部アプリの常駐状況
+					*d7:ZP -d,d6:ZP -j
+					*対応ビット=1の時そのアプリケーションが
+					*組み込まれている
+smf_end_flag:	dc.b	0		*SMF 転送終了フラグ
+rs232c_mode:	dc.b	0		*RS232C-MIDIのモード
+					*d7=(0:通常,1:デュアル)
+					*d0-d3:ボーレート時定数[3]
+perform_flg:	dc.b	0		*ZM_PLAY,ZM_CONT,ZM_STOPのファンクションが
+					*実行されるたびに対応ビットが1に上書きされる。
+					*d0:PLAY d1:CONT d2:STOP
+					*d7:loop mode(0:normal 1:no loop/FUNC $59参照)
+v2_compatch:	dc.b	0		*V2コンパチモードか[0]:NO 1:YES
+		.even
+fm_vol_tbl:	ds.b	16		*フェードアウト/イン用の音量ワーク
+ad_vol_tbl:	ds.b	16
+m0_vol_tbl:	ds.b	16
+m1_vol_tbl:	ds.b	16
+mr0_vol_tbl:	ds.b	16
+mr1_vol_tbl:	ds.b	16
+
+*以下spd,spd2,lvlw,lvlb系のワークの配置はzmsc2.hasの都合に合わせてある
+					*マスターフェーダーパラメータ群
+mstfd_fm_spd2:	ds.w	1		*スピード実行ワーク(.w)
+mstfd_fm_spd:	ds.w	1		*スピード値(.w)
+mstfd_fm_lvlw:	ds.b	1		*フェーダーレベル(.w)
+mstfd_fm_lvlb:	ds.b	1		*フェーダーレベル(.b)
+mstfd_fm_dest:	ds.b	1		*目的値(.b)
+mstfd_fm_mode:	ds.b	1		*フェーダーモード(.b)
+
+mstfd_ad_spd2:	ds.w	1		*スピード実行ワーク(.w)
+mstfd_ad_spd:	ds.w	1		*スピード値(.w)
+mstfd_ad_lvlw:	ds.b	1		*フェーダーレベル(.w)
+mstfd_ad_lvlb:	ds.b	1		*フェーダーレベル(.b)
+mstfd_ad_dest:	ds.b	1		*目的値(.b)
+mstfd_ad_mode:	ds.b	1		*フェーダーモード(.b)
+
+mstfd_m0_spd2:	ds.w	1		*スピード実行ワーク(.w)
+mstfd_m0_spd:	ds.w	1		*スピード値(.w)
+mstfd_m0_lvlw:	ds.b	1		*フェーダーレベル(.w)
+mstfd_m0_lvlb:	ds.b	1		*フェーダーレベル(.b)
+mstfd_m0_dest:	ds.b	1		*目的値(.b)
+mstfd_m0_mode:	ds.b	1		*フェーダーモード(.b)
+
+mstfd_m1_spd2:	ds.w	1		*スピード実行ワーク(.w)
+mstfd_m1_spd:	ds.w	1		*スピード値(.w)
+mstfd_m1_lvlw:	ds.b	1		*フェーダーレベル(.w)
+mstfd_m1_lvlb:	ds.b	1		*フェーダーレベル(.b)
+mstfd_m1_dest:	ds.b	1		*目的値(.b)
+mstfd_m1_mode:	ds.b	1		*フェーダーモード(.b)
+
+mstfd_mr0_spd2:	ds.w	1		*スピード実行ワーク(.w)
+mstfd_mr0_spd:	ds.w	1		*スピード値(.w)
+mstfd_mr0_lvlw:	ds.b	1		*フェーダーレベル(.w)
+mstfd_mr0_lvlb:	ds.b	1		*フェーダーレベル(.b)
+mstfd_mr0_dest:	ds.b	1		*目的値(.b)
+mstfd_mr0_mode:	ds.b	1		*フェーダーモード(.b)
+
+mstfd_mr1_spd2:	ds.w	1		*スピード実行ワーク(.w)
+mstfd_mr1_spd:	ds.w	1		*スピード値(.w)
+mstfd_mr1_lvlw:	ds.b	1		*フェーダーレベル(.w)
+mstfd_mr1_lvlb:	ds.b	1		*フェーダーレベル(.b)
+mstfd_mr1_dest:	ds.b	1		*目的値(.b)
+mstfd_mr1_mode:	ds.b	1		*フェーダーモード(.b)
+
+ch_fm_fdp:	ds.b	fd_wkl*16	*チャンネルフェーダーパラメータ群
+ch_ad_fdp:	ds.b	fd_wkl*16	*(1ch:8byte構成*16ch分)
+ch_m0_fdp:	ds.b	fd_wkl*16
+ch_m1_fdp:	ds.b	fd_wkl*16
+ch_mr0_fdp:	ds.b	fd_wkl*16
+ch_mr1_fdp:	ds.b	fd_wkl*16
+
+ch_fader_tbl:	ds.w	96	*チャンネルフェーダー
+				*(フェード処理するチャンネル番号0-95が並ぶ)
+		dc.w	-1	*End code
+master_fader_tbl:		*マスターフェーダー
+				*(フェード処理するデバイス番号*fd_wklが並ぶ)
+		ds.w	6	*0,8,16,24,32,40 
+		dc.w	-1	*End code
+
+ch_mask_fm:	dc.w	0		*チャンネルフェーダービットワーク
+ch_mask_ad:	dc.w	0
+ch_mask_m0:	dc.w	0
+ch_mask_m1:	dc.w	0
+ch_mask_mr0:	dc.w	0
+ch_mask_mr1:	dc.w	0
+		.even
+agogik_work:		ds.b	__pmod_len	*音楽演奏用アゴーギクワーク
+agogik_work_se:		ds.b	__pmod_len	*効果音演奏用アゴーギクワーク
+		.even
+mpcm_vol_tbl:					*MPCM用音量テーブル64=原音レベル
+	dc.w	   0,   3,   6,   9,  12,  15,  18,  21
+	dc.w	  24,  25,  26,  27,  28,  29,  30,  31
+	dc.w	  32,  33,  34,  35,  36,  37,  38,  39
+	dc.w	  40,  41,  42,  43,  44,  45,  46,  47
+	dc.w	  48,  50,  52,  54,  56,  58,  60,  62
+	dc.w	  64,  66,  68,  70,  72,  74,  76,  78
+	dc.w	  80,  82,  84,  86,  88,  90,  92,  94
+	dc.w	  96, 100, 104, 108, 112, 116, 120, 124
+	dc.w	 128, 132, 136, 140, 144, 148, 152, 156
+	dc.w	 160, 164, 168, 172, 176, 180, 184, 188
+	dc.w	 192, 200, 208, 216, 224, 232, 240, 248
+	dc.w	 256, 264, 272, 280, 288, 296, 304, 312
+	dc.w	 320, 328, 336, 344, 352, 360, 368, 376
+	dc.w	 384, 400, 416, 432, 448, 464, 480, 496
+	dc.w	 512, 528, 544, 560, 576, 592, 608, 624
+	dc.w	 640, 656, 672, 688, 704, 720, 736, 752
+_result_start:				*戻り値バッファ
+mask_track_result:	ds.l	1	*4*(trk_n_max+1) bytes
+mask_channel_result	ds.l	1	*4*(trk_n_max+1) bytes
+m_play_result:		ds.l	1	*4*(trk_n_max+1) bytes
+m_stop_result:		ds.l	1	*4*(trk_n_max+1) bytes
+m_cont_result:		ds.l	1	*4*(trk_n_max+1) bytes
+					*SMF再生関連ワーク
+smf_delta:	ds.l	1		*SMF デルタタイム
+smf_running:	ds.l	1		*SMFランニングステータスカウンタ
+smf_pointer:	ds.l	1		*SMF データポインタ
+smf_transfer:	ds.l	1		*SMF MIDI送信エントリ
+smf_mst_clk:	ds.l	1		*SMFマスタークロック
+smf_addr:	ds.l	1		*SMFの格納アドレス
+
+fo_ch_fm:	ds.b	8		*フェードアウト/インのワーク
+		ds.b	8		*DUMMY
+fo_ch_ad:	ds.b	16		*d0:ch fader active flag	01
+fo_ch_m0:	ds.b	16		*d1:master fader active flag	02
+fo_ch_m1:	ds.b	16		*d5:master fader move flag	20
+fo_ch_mr0:	ds.b	16		*d6:ch fader move flag		40
+fo_ch_mr1:	ds.b	16		*d7:処理したかどうか		80
+work:
+pt_ptr:		ds.l	1		*play_trk_tblの指標
+					*必ずwork=pt_ptr
+cf	ds.b	8	*オペレータのコネクションテーブルビット
+ol1:	ds.b	8	*アウトプットレベル1
+ol2:	ds.b	8	*アウトプットレベル2
+ol3:	ds.b	8	*アウトプットレベル3
+ol4:	ds.b	8	*アウトプットレベル4
+opm_kon:	ds.b	8		*OPMレジスタ8番のワーク
+opm_nom:	ds.b	8		*オペレータマスク(OM)のNOT(&b11110000-&b11111111)
+_opm:		ds.b	256		*OPMのレジスタ・イメージ・ワーク
+opm_pmd:	dc.b	0
+------------------------------------------------------------------------------
+　ZMUSIC状態ワークの不当な書き替えも、演奏に支障をきたすだけでなく、ZMUSICの
+
+暴走を引き起こす可能性もあるため、細心の注意を必要とする。また、特殊な使用目的
+
+以外では、各ワークは読み出し専用と考え、書き替えはなるべく行わないように
+
+したほうがよい。
+
+  また、ワークはバージョンによっては内容構成が変更される可能性もあるため、
+
+自作プログラムZMUSIC状態ワークを参照する場合にはZMUSICのバージョンのチェック
+
+を厳しく行った方がよい。
+
+
+１３．４．ワークビュアZSV.R
+
+
+　ZSV.RはZMUSIC Ver3.0以上で動作するワーク／ステータスビュアである。
+
+(ZSV.RはZMUSIC STATUS VIEWRの略)
+
+　ZMSやZMS等の演奏データを演奏した後、
+
+	A>ZSV
+
+として起動すると、演奏中に変化するZMUSIC内部のパラメータの値をリアルタイムに
+
+見ることが出来る。
+
+
+１３．４．１．ZSV.Rの表示パラメータ
+
+
+１３．４．１．１．コモンパラメータ
+
+
+  画面一番上部には現在演奏中の曲のタイトル文字列が表示され、その下にその曲
+
+全体の動作を表すパラメータ群が表示されている。このパラメータ群を特に
+
+コモンパラメータとよぶ。
+
+　以下にコモンパラメータの一覧を示す。
+
+------------------------------------------------------------------------------
+METER:		拍子
+KEY:		調号
+TEMPO:		テンポ
+PLAYTIME:	演奏開始からの経過時間／演奏時間
+右上部のゲージ	演奏の進行度を表している。右が終端。
+		終結する曲は曲の終わりが、
+		リピート曲は1ループが、ゲージ終端に相当する。
+
+AGOGIK:		アゴーギク(テンポの緩急)の振幅
+WAVE:		アゴーギクの波形種別
+VARIANT:	アゴーギク振幅の変化量
+
+REPEAT:		現時点での演奏反復回数
+FMOPM:		現在演奏中の曲のFM音源使用チャンネル数
+FMOPM FADER:	FM音源部のマスターフェーダー
+ADPCM:		現在演奏中の曲のADPCM音源使用チャンネル数
+ADPCM FADER:	ADPCM音源部のマスターフェーダー
+MIDI1:		現在演奏中の曲のMIDI1の使用チャンネル数
+MIDI1 FADER:	MIDI1のマスターフェーダー
+MIDI2:		現在演奏中の曲のMIDI2の使用チャンネル数
+MIDI2 FADER:	MIDI2のマスターフェーダー
+MIDI3:		現在演奏中の曲のMIDI3の使用チャンネル数
+MIDI3 FADER:	MIDI3のマスターフェーダー
+SYSTEM:		Z-MUSICのバージョン番号
+TIMER:		使用タイマ
+
+最上部の5つの	それぞれFM,ADPCM,MIDI1～3のマスターフェーダーを
+スライダー	表している。
+------------------------------------------------------------------------------
+
+
+１３．４．１．２．トラックパラメータ
+
+
+　コモンパラメータの下には、各トラック毎のワークが表示される。一度に表示できる
+
+トラック数は、X680x0の画面の広さの関係から10トラックまでとなっているが、
+
+カーソルキーの上下をつかってスクロールさせれば任意のトラック番号のワークを
+
+参照することができる。
+
+  以下にトラックパラメータ表示部のパラメータ一覧を示す。
+------------------------------------------------------------------------------
+
+オレンジ色の数字:	トラック番号
+赤、黄色、水色の文字:	トラックに割り当てられているデバイス名とチャンネル番号
+STATUS:			トラックステータス
+8桁の16進数:		現在実行しているZMDのアドレス
+			続いて
+			ZMD,音符の種類,ゲートタイム,ステップタイム,ベロシティ
+			が表示されている。
+			  音符が万が一ポルタメント指定の場合ならばさらに
+			ポルタメント先の音符が表示される
+CH.FADER:		チャンネルフェーダー
+TIMBRE:			音色番号(MIDI部はバンク番号-音色番号と表示される)
+VOLUME:			音量
+VELOCITY:		ベロシティ(FM音源部とADPCM音源部は音量値とつねに同値)
+DETUNE:			ディチューン
+PITCH:			オートピッチベンダー
+AFTER:			アフタータッチシーケンスのその時のアフタータッチ値
+HOLD:			ダンパー(サスティン)ペダル
+PAN:			パンポット
+
+ARCC1～4:		ARCCの振幅
+WAVE:			ARCCの波形種別
+VARIANT:		ARCCの振幅の変化量
+CTRL:			ARCCでコントロールしているコントロール番号
+			FM音源部でワウワウやアンプリチュードモジュレーションを
+			行っている場合には操作対象のオペレータ番号が
+			緑色で表示される。
+
+VIBRATO:		ビブラートの振幅
+WAVE:			ビブラートの波形種別
+VARIANT:		ビブラートの振幅の変化量
+
+VELOCITY.SEQ:		ベロシティシーケンスのその時のベロシティ値
+WAVE:			ベロシティシーケンスの波形種別
+VARIANT:		ベロシティシーケンスの振幅の変化量
+
+鍵盤左の5つのスライダー	ARCC1～4の振幅とピッチの変化を表す。
+			ARCC1 ARCC2 PITCH
+			ARCC3 ARCC4
+			のように配列している。
+
+鍵盤の右の○		パンポットつまみ
+
+パンポットつまみの	ダンパーペダルの踏み具合。
+右のゲージ		オレンジのゲージが上に行けば行くほど深い踏み込み。
+
+パンポットつまみの	赤:ノートオフメッセージなし
+右の小さい●		緑:ノートオフメッセージ有り
+
+ダンパーゲージの	チャンネルフェーダー
+右のスライダー
+
+鍵盤の右のゲージ	アタックレベル
+			キーオンすると立ち上がる。タイやスラーなどの手法で
+			発音、音程変化しても立ち上がらない。
+------------------------------------------------------------------------------
+
+
+１３．４．２．キー操作
+
+
+  ZSV.Rでは
+
+	A>ZP3 -K
+
+によってZP3.Rを常駐させてから使用可能となるキー操作はすべて装備しており、
+
+環境変数zp3_keyctrlに記載されているキー配置情報も有効となる。環境変数
+
+zp3_keyctrlについてはMEASURE7を参照のこと。
+
+  以下に操作キー一覧を示す
+
+●ファンクションキー部
+
+[F1]～[F10]		表示されている10トラックをそれぞれ
+			マスク/マスク解除する。たとえばトラック3-12が
+			表示されていると[F5]ではトラック７が操作対象となる
+
+●カーソルキー部
+[↑]			上へスクロール
+[↓]			下へスクロール
+[HOME]			マスク反転
+[DEL]			マスク全解除
+
+●フルキー部
+[P]			パンポット表示モード変更(0-127←→L63-0-R63)
+[,]			振幅表示モード変更(最大振幅←→振幅実行値)
+[F]			FMの全チャンネルマスク/マスク解除
+[B]			BANKの表示モードの設定(14bit,上位7bitのみ,7bit:7bit(デフォルト))
+[SPACE]			ステータス表示の一時停止(ポーズ)
+
+●テンキー部
+[9]			ADPCMの全チャンネルマスク/マスク解除
+[/]			MIDI-1の全チャンネルマスク/マスク解除
+[*]			MIDI-2の全チャンネルマスク/マスク解除
+[-]			MIDI-3の全チャンネルマスク/マスク解除
+[+]			MIDI-4の全チャンネルマスク/マスク解除
