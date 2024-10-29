@@ -7,6 +7,39 @@
 *
 *-----------------------------------------------
 
+
+PATCHLEVEL:	.reg	'1'
+PATCHDATE:	.reg	'1999/04/23'
+PATCHAUTHOR:	.reg	'立花えり子'
+
+
+LF:		.equ	$0a
+CR:		.equ	$0d
+ESC:		.equ	$1b
+
+.ifdef __CRLF__
+CRLF:		.reg	CR,LF
+.else
+CRLF:		.reg	LF
+.endif
+
+.ifdef USE_ESC_SEQ
+ESCm:		.reg	ESC,'[m'
+ESC35:		.reg	ESC,'[35m'
+ESC36:		.reg	ESC,'[36m'
+ESC37:		.reg	ESC,'[37m'
+ESC46:		.reg	ESC,'[46m'
+ESC47:		.reg	ESC,'[47m'
+.else
+ESCm:		.reg	''
+ESC35:		.reg	''
+ESC36:		.reg	''
+ESC37:		.reg	''
+ESC46:		.reg	''
+ESC47:		.reg	''
+.endif
+
+
 *参考文献一覧
 *		X68000ﾊﾟﾜｰｱｯﾌﾟﾌﾟﾛｸﾞﾗﾐﾝｸﾞ	ASCII		ADPCM→PCM変換法
 *		nnPCMDRV.SYSのDOCUMENT		Mr.GORRY	DMA/ADPCMの操作法
@@ -31,8 +64,10 @@ plus_:		equ	224
 genten_a:	equ	scr_wy
 genten_b:	equ	scr_wy+plus_
 stack:		equ	$4000	*stackの大きさ
+.ifdef SELF_REWRITE
 RTS:		equ	$4e75	*rtsの機械語コード
 NOP:		equ	$4e71	*NOPの命令コード
+.endif
 
 sftsns	macro	dreg
 	move.w	$810.w,dreg
@@ -132,8 +167,10 @@ chk_opt_lp:
 	lea	input_buffer,a0
 	cmpi.b	#'-',(a0)
 	beq	option_chk
+.ifdef SLASH_OPT
 	cmpi.b	#'/',(a0)
 	beq	option_chk
+.endif
 	bsr	sv_fn		*get file name
 	bne	print_hlp
 	bra	chk_opt_lp
@@ -330,8 +367,12 @@ prp_mix_wild:			*ミックスでワイルドカードチェック
 	bra	fn_error
 do_wild_prp:
 	clr.b	files_hjm
+.ifdef SELF_REWRITE
 	move.w	mission_complete(pc),patch1
 	move.w	#RTS,mission_complete
+.else
+	st	patch1_flag
+.endif
 
 	bsr	make_true_fn
 wild_com_lp:
@@ -351,9 +392,15 @@ wild_com_lp:
 	bsr	go_command
 	bra	wild_com_lp
 wild_end:
+.ifdef SELF_REWRITE
 	move.w	patch1,mission_complete
 	not.b	files_hjm
 	bmi	mission_complete
+.else
+	clr.b	(patch1_flag)
+	not.b	files_hjm
+	bmi	mission_complete
+.endif
 	bra	fn_error
 
 get_dest_fn:			*書き込み側のファイルネーム
@@ -467,16 +514,15 @@ do_make_true_fn:
 	pea	(a2)		*wild card
 	pea	filbuf(pc)
 	DOS	_FILES
-	lea	10(sp),sp
-	tst.l	d0
+	addq.l	#10-4,sp
+	move.l	d0,(sp)+
 	bmi	exit_dmtf
 	st	files_hjm
 	bra	_nm_trns
 _nfiles:
 	pea	filbuf(pc)
 	DOS	_NFILES
-	addq.w	#4,sp
-	tst.l	d0
+	move.l	d0,(sp)+
 	bmi	exit_dmtf
 _nm_trns:
 	lea	filbuf+30(pc),a1
@@ -617,11 +663,20 @@ zvt_init:
 	bra	val_init
 
 editor_start:			*エディター部のスタート
-	bsr	use_gram??
-	bne	gram_error
+	moveq	#0,d1
+	moveq	#-1,d2
+	IOCS	_TGUSEMD
+	subq.b	#1,d0
+	subq.b	#1,d0
+	bls	gram_error
 ok_ed_go:
 	bsr	zvt_init
 oeg0:
+	move.l	#14<<16+2,-(sp)
+	DOS	_CONCTRL
+	addq.l	#4,sp
+	move	d0,(fnc_mode)
+
 	bsr	zen_clr		*全画面クリア
 	bsr	scr_init
 	bsr	set_vect
@@ -1279,6 +1334,7 @@ go_rec:
 
 	move.b	d7,(a1)
 
+	bsr	cache_flush
 	move.b	#$88,CCR3	*dma go!
 	move.b	#$4,$e92001	*pcm rec mode
 rc00:
@@ -5840,38 +5896,45 @@ howmany0:	dc.b	'How many 0s do you want to add?',0
 up_down_mes2:	dc.b	'Input offset value:',0
 inout_mes:	dc.b	'Input in/out level:',0
 sel_mode_mes:	dc.b	'Decide the mode(1.＜  2.＞):',0
-title:		dc.b	$1b,'[36mΖ',$1b,'[35mｖт.х ',$1b,'[37m'
+.ifdef PATCHLEVEL
+title:		.dc.b	'ZVT version 2.09 patchlevel ',PATCHLEVEL
+author:		.dc.b	' (C)1991-1994 ZENJI SOFT, ',PATCHDATE,' ',PATCHAUTHOR,'.',CRLF,0
+.else
+title:		dc.b	ESC36,'Ζ',ESC35,'ｖт.х ',ESC37
 		dc.b	$F3,'V',$F3,'E',$F3,'R',$F3,'S',$F3,'I',$F3,'O',$F3,'N'
 		dc.b	$f3,' ',$f3,'2',$f3,'.',$f3,'0',$f3,'9'
 author:
-		dc.b	$1b,'[m (C) 1991,1992,1993,1994 '
-		dc.b	$1b,'[36mZENJI SOFT',$1b,'[m',13,10,0
-hlp_mes:	dc.b	$1b,'[37m< USAGE >',$1b,'[m ZVT.X [-･/options...] [file name1] [file name2] [file name3]',13,10
-		dc.b	$1b,'[37m< OPTION LIST >',13,10,$1b,'[m'
-		dc.b	'-?                   Display the option list.',13,10
-		dc.b	'-4<P or V>[+ or -]   Change the pitch or the volume of FILE1 by 4 phases.',13,10
-		dc.b	'-A                   Convert 16bit PCM data into ADPCM data.',13,10
-		dc.b	'-C                   Convert ADPCM data into 16bit PCM data.',13,10
-		dc.b	'-G                   Work at VISUAL MODE by force.',13,10
-		dc.b	'-I[offset value]     Insert FILE1 into FILE2, save for FILE3.',13,10
-		dc.b	"-M[offset value]     Mix FILE1 and FILE2, save for FILE3.",13,10
-		dc.b	'-P[+ or -]<0≦n≦12> Change the pitch of FILE1, and save for FILE2.',13,10
-		dc.b	'-V<1%≦n%≦300%>     Change the volume of FILE1, and save for FILE2.',13,10
-		dc.b	$1b,'[37m< NOTICE >',13,10
-		dc.b	"･You can put '-P' and '-V' at any case.",13,10
-		dc.b	'･You can put wild cards on file names.',13,10
-		dc.b	$1b,'[m',0
-fn_er_mes:	dc.b	$1b,'[47mDid you set parameters properly?',$1b,'[m',13,10,0
-outm_er_mes:	dc.b	$1b,'[47mOut of memory.',$1b,'[m',13,10,0
-done_it:	dc.b	'Operations are all set.',13,10
-		dc.b	'A ',$1b,'[37m','♪SOUND',$1b,'[m mind in a '
-		dc.b	$1b,'[37mSOUND',$1b,'[m',' body.',13,10,0
-rer_mes:	dc.b	$1b,'[47mFile read error.',$1b,'[m',13,10,0
-fop_mes:	dc.b	$1b,'[47mFile open error.',$1b,'[m',13,10,0
-wer_mes:	dc.b	$1b,'[47mFile write error.',$1b,'[m',13,10,0
-dkf_mes:	dc.b	$1b,'[47mDisk is full up.',$1b,'[m',13,10,0
-ger_mes:	dc.b	$1b,'[47mG-RAM is unable to use.',$1b,'[m',13,10,0
-proc_mes:	dc.b	$1b,'[46mPROCESSING...',$1b,'[m',13,10,0
+		dc.b	ESCm,' (C) 1991,1992,1993,1994 '
+		dc.b	ESC36,'ZENJI SOFT',ESCm,CRLF,0
+.endif
+hlp_mes:	dc.b	ESC37,'< USAGE >',ESCm,' ZVT.X [-option...] [filename1] [filename2] [filename3]',CRLF
+		dc.b	ESC37,'< OPTION LIST >',ESCm,CRLF
+		dc.b	'-?                   Display the option list.',CRLF
+		dc.b	'-4<P or V>[+ or -]   Change the pitch or the volume of FILE1 by 4 phases.',CRLF
+		dc.b	'-A                   Convert 16bit PCM data into ADPCM data.',CRLF
+		dc.b	'-C                   Convert ADPCM data into 16bit PCM data.',CRLF
+.if 0
+		dc.b	'-G                   Work at VISUAL MODE by force.',CRLF
+.endif
+		dc.b	'-I[offset value]     Insert FILE1 into FILE2, save for FILE3.',CRLF
+		dc.b	"-M[offset value]     Mix FILE1 and FILE2, save for FILE3.",CRLF
+		dc.b	'-P[+ or -]<0≦n≦12> Change the pitch of FILE1, and save for FILE2.',CRLF
+		dc.b	'-V<1≦n≦300(%)>     Change the volume of FILE1, and save for FILE2.',CRLF
+		dc.b	ESC37,'< NOTICE >',CRLF
+		dc.b	"･You can put '-P' and '-V' at any case.",CRLF
+		dc.b	'･You can put wild cards on file names.',CRLF
+		dc.b	ESCm,0
+fn_er_mes:	dc.b	ESC47,'Did you set parameters properly?',ESCm,CRLF,0
+outm_er_mes:	dc.b	ESC47,'Out of memory.',ESCm,CRLF,0
+done_it:	dc.b	'Operations are all set.',CRLF
+		dc.b	'A ',ESCm,'♪SOUND',ESCm,' mind in a '
+		dc.b	ESC37,'SOUND',ESCm,' body.',CRLF,0
+rer_mes:	dc.b	ESC47,'File read error.',ESCm,CRLF,0
+fop_mes:	dc.b	ESC47,'File open error.',ESCm,CRLF,0
+wer_mes:	dc.b	ESC47,'File write error.',ESCm,CRLF,0
+dkf_mes:	dc.b	ESC47,'Disk is full up.',ESCm,CRLF,0
+ger_mes:	dc.b	ESC47,'GVRAM is unable to use.',ESCm,CRLF,0
+proc_mes:	dc.b	ESC46,'PROCESSING...',ESCm,CRLF,0
 input_fn2_mes:	dc.b	'Input file name:',0
 monitor_mode:	dc.b	0	*off
 data_type:	dc.b	0	*pcm=0(adpcm=1)
@@ -5888,10 +5951,12 @@ wild_mode:	dc.b	0
 files_hjm:	dc.b	0
 hk_mode:	dc.b	$ff
 no_files:	dc.b	0
+.ifdef USE_ESC_SEQ
 _L00009b:
 	.dc.b	$1b,'[>1l',$00
 _L0000a1:
 	.dc.b	$1b,'[m',$00,$00
+.endif
 nameptr:
 	dc.b	'*.*',0
 ofsbar:	dc.b	'[     :          ] [     :          ] [         :          ]',0
@@ -6070,10 +6135,21 @@ main_scr:			*ﾌｧｲﾙﾒﾆｭｰから帰還した場合
 	movem.l	reg_buff2,d0-d7/a0-a6
 	bra	complete
 
+
+cache_flush:
+	cmpi.b	#1,($cbc)
+	bls	@f
+	movem.l	d0-d1,-(sp)
+	moveq	#3,d1
+	IOCS	_SYS_STAT
+	movem.l	(sp)+,d0-d1
+@@:	rts
+
+
 g_recover:
 	moveq.l	#0,d1
 	moveq.l	#0,d2
-	move.w	#0,d3
+	moveq	#0,d3
 	IOCS	_HOME		*gram疑似復活
 	rts
 
@@ -7040,12 +7116,19 @@ all_end_:
 	IOCS	_MS_LIMIT
 	moveq.l	#$ff,d1
 	IOCS	_SKEY_MOD
+.ifdef USE_ESC_SEQ
 	pea.l	_L00009b(pc)
 	DOS	_PRINT
 	addq.w	#4,a7
 	pea.l	_L0000a1(pc)
 	DOS	_PRINT
 	addq.w	#4,a7
+.endif
+	andi	#$ffe0,($e82600)
+	move	(fnc_mode,pc),-(sp)
+	move	#14,-(sp)
+	DOS	_CONCTRL
+	addq.l	#4,sp
 
 	lea	ent_path(pc),a0
 	move.w	(a0)+,-(sp)
@@ -7065,7 +7148,7 @@ bye_bye:
 goto_bv:
 	bsr	back_vect
 
-	pea	0.w
+	clr.l	-(sp)
 	DOS	_MFREE
 	addq.w	#4,sp
 
@@ -7078,12 +7161,6 @@ goto_bv:
 
 	DOS	_EXIT		*終了…
 
-use_gram??:			*グラフィックは使用可能？
-	moveq.l	#0,d1
-	moveq.l	#-1,d2
-	IOCS	_TGUSEMD	*グラフィックの使用状況
-	tst.l   d0
-	rts
 
 write_data:			*ディスクへの書き込み
 	* < d1.l=size
@@ -7239,7 +7316,7 @@ get_fsize:
 	* < d5.w=file handle
 	* > d0.l=file size
 	move.w	#2,-(sp)	*ファィルの長さを調べる
-	pea	0.w
+	clr.l	-(sp)
 	move.w	d5,-(sp)
 	DOS	_SEEK
  	addq.w	#8,sp		*d0.l=file length
@@ -7247,7 +7324,7 @@ get_fsize:
 	move.l	d0,-(sp)
 
 	clr.w	-(sp)		*ファイルポインタを元に戻す
-	pea	0.w
+	clr.l	-(sp)
 	move.w	d5,-(sp)
 	DOS	_SEEK
 	addq.w	#8,sp
@@ -7344,10 +7421,8 @@ other_init:
 
 	move.w	#-1,-(sp)
 	DOS	_BREAKCK
-	addq.w	#2,sp
 	move.w	d0,brk_wk
-
-	move.w	#2,-(sp)
+	addq	#3,(sp)
 	DOS	_BREAKCK
 	addq.w	#2,sp
 
@@ -7366,11 +7441,11 @@ other_init:
 	rts
 zen_clr:				*テキスト画面の全プレーンクリア
 	movem.l	d0-d1/a0,-(sp)
-	move.w	$e8002a,-(sp)
-	move.w	#%00000001_11110000,$e8002a	*同時アクセス
-
 	lea	$e00000,a0
 	move.w	#32*16-1,d0
+zen_clr_start:
+	move.w	$e8002a,-(sp)
+	move.w	#%00000001_11110000,$e8002a	*同時アクセス
 clr_loop0:
 	moveq.l	#24-1,d1
 clr_loop1:
@@ -7382,23 +7457,18 @@ clr_loop1:
 	move.w	(sp)+,$e8002a			*同時アクセス解除
 	movem.l	(sp)+,d0-d1/a0
 	rts
+
 zen_clr2:				*テキスト画面の全プレーンクリア
 	movem.l	d0-d1/a0,-(sp)
-	move.w	$e8002a,-(sp)
-	move.w	#%00000001_11110000,$e8002a	*同時アクセス
-
 	lea	$e00000+$80*16,a0
 	move.w	#31*16-1,d0
-	bra	clr_loop0
+	bra	zen_clr_start
 
 zen_clr3:				*テキスト画面の全プレーンクリア
 	movem.l	d0-d1/a0,-(sp)
-	move.w	$e8002a,-(sp)
-	move.w	#%00000001_11110000,$e8002a	*同時アクセス
-
 	lea	$e00000+$80*32,a0
 	move.w	#30*16-1,d0
-	bra	clr_loop0
+	bra	zen_clr_start
 
 dsp_wv:				*波形の表示(CASE:PCM)
 	* < a6=pcm data address
@@ -7821,7 +7891,8 @@ trans_dma:			*ＤＭＡ転送($ff00バイト以上も考慮)
 	* - all
 	tst.l	d2
 	beq	exit_dt
-	movem.l	d0-d3/a0-a2,-(sp)
+	movem.l	d0-d4/a0-a2,-(sp)
+.ifdef SELF_REWRITE
 	lea	d3a1(pc),a0
 	move.w	d1,d3
 	andi.w	#%11,d3
@@ -7831,6 +7902,10 @@ trans_dma:			*ＤＭＡ転送($ff00バイト以上も考慮)
 	andi.w	#%1100,d3
 	lsr.w	#1,d3
 	move.w	d3a2_op(pc,d3.w),(a0)+
+	bsr	cache_flush
+.else
+	move	d1,d4
+.endif
 	move.l	#$ff00,d3
 trans_dma_lp:
 	cmp.l	d3,d2
@@ -7840,14 +7915,34 @@ trans_dma_lp:
 	move.l	d3,d2
 	IOCS	_DMAMOVE
 	movem.l	(sp)+,d2/a1-a2
+.ifdef SELF_REWRITE
 d3a1:	ds.w	1
 d3a2:	ds.w	1
+.else
+	btst	#2,d4
+	beq	1f
+	adda.l	d3,a1
+	bra	@f
+1:	btst	#3,d4
+	beq	@f
+	suba.l	d3,a1
+@@:
+	btst	#0,d4
+	beq	1f
+	adda.l	d3,a2
+	bra	@f
+1:	btst	#1,d4
+	beq	@f
+	suba.l	d3,a2
+@@:
+.endif
 	sub.l	d3,d2
 	bne	trans_dma_lp
 bye_dma:
-	movem.l	(sp)+,d0-d3/a0-a2
+	movem.l	(sp)+,d0-d4/a0-a2
 exit_dt:
 	rts
+.ifdef SELF_REWRITE
 d3a1_op:
 	nop
 	adda.l	d3,a1
@@ -7858,6 +7953,7 @@ d3a2_op:
 	adda.l	d3,a2
 	suba.l	d3,a2
 	dc.w	-1
+.endif
 go_single_dma:
 	IOCS	_DMAMOVE
 	bra	bye_dma
@@ -8943,8 +9039,7 @@ make_file_list:
 
 	move.l	fn_buf_size(pc),-(sp)	*256 file 分のバッファ
 	DOS	_MALLOC
-	addq.w	#4,sp
-	tst.l	d0
+	move.l	d0,(sp)+
 	bmi	mem_error
 	move.l	d0,file_list
 	movea.l	d0,a6
@@ -9505,8 +9600,13 @@ clr_em_area:
 	moveq.l	#2,d1
 	IOCS	_B_ERA_ST	*メッセージエリアの消去
 	movem.l	(sp)+,d0-d2
+9:
 	rts
 print_em:
+.ifndef SELF_REWRITE
+	tst.b	(patch2_flag)
+	bne.s	9b
+.endif
 	* > d1=minus then error
 	movem.l	d0-d4/a0-a1,-(sp)
 	lea	work(pc),a1
@@ -9833,7 +9933,11 @@ err_exit_fcp16:
 go_command:			*フィルター機能の分岐
 	bsr	val_init	*数値の初期化
 	bsr	fn_chk_p16	*fnが.p16かどうかチェック
+.ifdef SELF_REWRITE
 	move.w	#RTS,print_em	*rtsをエラーメッセージ表示ルーチンに書きこんじゃう
+.else
+	st	(patch2_flag)
+.endif
 	lea	pitch_cmd(pc),a5
 	lea	volume_cmd(pc),a6
 
@@ -10474,6 +10578,10 @@ _4_back:
 *	bra	mission_complete
 
 mission_complete:
+.ifndef SELF_REWRITE
+	move.b	(patch1_flag,pc),d0
+	bne.s	9f
+.endif
 	pea	done_it(pc)
 	DOS	_PRINT
 	addq.w	#4,sp
@@ -10484,6 +10592,7 @@ disp_proc:			*now processing
 	DOS	_PRINT
 	addq.w	#4,sp
 	IOCS	_B_UP_S
+9:
 	rts
 fn_error:			*パラメータの間違いなら
 	pea	fn_er_mes(pc)
@@ -10521,10 +10630,10 @@ gram_error:
 	bsr	ppp
 
 	pea	ger_mes(pc)
-	DOS	_PRINT
-	addq.w	#4,sp
+	bra	@f
 print_hlp:
 	pea	hlp_mes(pc)
+@@:
 	DOS	_PRINT
 	addq.w	#4,sp
 	bra	bye_bye
@@ -10629,6 +10738,7 @@ adpcm_panst:
 	move.b	$e9a005,d0	*周波数やパンをゲット
 	andi.b	#%1111_0000,d0
 	or.b	d1,d0		*設定値を作成
+	bsr	cache_flush
 	move.b	#$88,CCR3-OCR3(a0)	*dma start
 	move.b	d0,$e9a005	*コントロールデータ送信
 	rts
@@ -10788,14 +10898,24 @@ set_vect:				*ADPCMの停止処理の書き換え
 *	move.b	#%0000_0100,$e92001	*adpcm rec start
 *	move.b	#%0000_0001,$e92001	*adpcm all end
 
+.ifdef SELF_REWRITE
 	move.w	#NOP,back_vect		*ベクタ復元必要
+.else
+	st	(back_vect_flag)
+.endif
 
 	movem.l	(sp)+,d0-d1/a1
 	rts
 
 back_vect:			*ベクタの復元
+.ifdef SELF_REWRITE
 	rts
 	movem.l	d0-d1/a1,-(sp)
+.else
+	movem.l	d0-d1/a1,-(sp)
+	move.b	(back_vect_flag,pc),d0
+	beq	back_vect_end
+.endif
 
 	moveq.l	#0,d1
 	IOCS	_ADPCMMOD	*まず停止
@@ -10817,6 +10937,7 @@ back_vect:			*ベクタの復元
 	movea.l	adpcmmod_v(pc),a1
 	move.w	#$167,d1
 	IOCS	_B_INTVCS	*get back int adpcmmod vector
+back_vect_end:
 	movem.l	(sp)+,d0-d1/a1
 
 	rts
@@ -10875,6 +10996,11 @@ dt_mem:		ds.b	1
 fn1_p16:	ds.b	1
 fn2_p16:	ds.b	1
 fn3_p16:	ds.b	1
+.ifndef SELF_REWRITE
+patch1_flag:	.ds.b	1
+patch2_flag:	.ds.b	1
+back_vect_flag:	.ds.b	1
+.endif
 	.even
 ssp:		ds.l	1
 rec_data_size:	ds.l	1
@@ -10925,9 +11051,12 @@ add_times:	ds.w	1
 frq_flg:	ds.w	1
 frq_wk:		ds.w	1
 genten_y:	ds.w	1
+fnc_mode:	.ds.w	1
 ent_path:	ds.b	70
 prt_bf:		ds.b	96
+.ifdef SELF_REWRITE
 patch1:		ds.w	1
+.endif
 fn_buffer1:	ds.l	1
 fn_point1:	ds.l	1
 rd_fn:		ds.b	92

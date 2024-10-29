@@ -3,6 +3,8 @@
 西川善司氏の作成されたZMUSIC SYSTEM Ver.3.0系のソースコードです。  
 改造版をブランチにコミットします。
 
+`eriko-zvt`ブランチは、TcbnErikによりMPUキャッシュ対策を加えた改造版ZVT version 2.09 patchlevel 1です。
+
 PCやネット上で扱いやすくするために、このリポジトリ内のテキストファイルは以下の変更がされています。
 * 文字コードをUTF-8に変更。
 * 改行をLFに変更。
@@ -86,6 +88,7 @@ ZM1.MAN「１．３．  著作権について」の項より引用:
 
 ## Author
 ZMUSICの作者は西川善司氏です。  
+ZVT version 2.09 patchlevel 1のパッチ制作者はTcbnErikです。
 
 このリポジトリの作成はTcbnErikによるものです。  
 https://github.com/kg68k/zmusic3
