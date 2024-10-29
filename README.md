@@ -60,6 +60,18 @@ X680x0上でビルドする際には、ソースファイルのUTF-8からShift_
 `src/`内のファイルを適当なツールで適宜Shift_JISに変換してから`make`を実行してください。
 UTF-8のままでは正しくビルドできませんので注意してください。
 
+## zmsc3lib.a
+
+zmsc3lib.aのビルドについては、ZM302_L.LZHに含まれるZMSC3LIB.A、ZMSC3LIB.L
+と同一のファイルを生成するために処理が多くなっています。
+
+ライブラリの改造版を作る場合は、src/lib/Makefileの下記部分のコメントアウトを逆にして
+libzmsc3.aをベースとして作成することをおすすめします。
+```Makefile
+#TARGET = libzmsc3.a
+TARGET = ZMSC3LIB.A ZMSC3LIB.L
+```
+
 
 ## License
 ZM1.MAN「１．３．  著作権について」の項より引用:

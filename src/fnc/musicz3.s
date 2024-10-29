@@ -9,9 +9,14 @@
 	.include	iocscall.mac
 	.include	zmcall.mac
 	.include	z_global.mac
-	.include	version.mac
 	.include	zmid.mac
-	.include	fdef.h
+	.include	fdef.mac
+
+	*ZM302_L.LZHに入っているMUZUCZ3.FNCはversion 3.02だが
+	*ソースコードをアセンブルすると3.02Cになってしまうのでごまかす
+	NO_VERSION_SUFFIX: .equ 1
+	.include	version.mac
+
 	.cpu	68000
 
 val:		equ	6
@@ -2816,7 +2821,7 @@ zmdplp01:				*ファイルネームのゲット
 	bsr	self_output
 	bra	ok_0
 
-	.include	fopen.has
+	.include	../fopen.s
 
 m_debug:			*V2 [!]コマンドの有効/無効化
 	bsr	check_zm3
@@ -4534,7 +4539,7 @@ get_ermstj:					*compile_error
 	moveq.l	#1,d0			*error mark
 	rts
 
-	.include	zmerrmes.s
+	.include	../zmerrmes.s
 
 mz_v2_command_error:
 	lea	mz_v2_command_error_mes(pc),a1
